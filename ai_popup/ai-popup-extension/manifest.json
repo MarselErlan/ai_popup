@@ -5,6 +5,18 @@
     "version": "1.0",
     "permissions": ["scripting", "activeTab"],
     "host_permissions": ["<all_urls>"],
+    "icons": {
+      "16": "ai_popup.png",
+      "32": "ai_popup.png",
+      "48": "ai_popup.png",
+      "128": "ai_popup.png"
+    },
+    "web_accessible_resources": [
+      {
+        "resources": ["ai_popup.png"],
+        "matches": ["<all_urls>"]
+      }
+    ],
     "content_scripts": [
       {
         "matches": ["<all_urls>"],

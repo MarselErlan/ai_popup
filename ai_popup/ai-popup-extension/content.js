@@ -1,5 +1,5 @@
 (function () {
-    const AI_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/4/4f/Iconic_AI_logo.svg';
+    const AI_ICON_URL = chrome.runtime.getURL('ai_popup.png');
   
     const aiButton = document.createElement('img');
     aiButton.src = AI_ICON_URL;
@@ -10,8 +10,10 @@
       height: 32px;
       cursor: pointer;
       display: none;
-      border-radius: 50%;
-      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+      background: transparent;
+      border: none;
+      outline: none;
+      box-shadow: none;
     `;
     document.body.appendChild(aiButton);
   
@@ -22,8 +24,9 @@
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
         currentInput = target;
         const rect = target.getBoundingClientRect();
-        aiButton.style.top = window.scrollY + rect.top + 'px';
-        aiButton.style.left = window.scrollX + rect.right + 10 + 'px';
+        // Position LEFT side of the input field
+        aiButton.style.top = (window.scrollY + rect.top + (rect.height - 32) / 2) + 'px';
+        aiButton.style.left = (window.scrollX + rect.left - 40) + 'px';
         aiButton.style.display = 'block';
       } else {
         aiButton.style.display = 'none';
@@ -31,6 +34,7 @@
     });
   
     aiButton.addEventListener('click', async () => {
+      console.log("🚀 NEW CODE RUNNING - Button clicked!"); // Test if new code is loaded
       if (!currentInput) return;
   
       // Show loading state
@@ -42,16 +46,22 @@
         const fieldLabel = getFieldLabel(currentInput);
         const pageUrl = window.location.href;
 
-        console.log("🧠 Detected field:", fieldLabel);
+                console.log("🧠 Detected field:", fieldLabel);
+        
+        const requestData = {
+          label: fieldLabel,
+          url: pageUrl,
+          user_id: "default", // or dynamic user ID later
+        };
+        
+        console.log("📤 SENDING TO BACKEND:", requestData);
+        console.log("📤 Question being sent:", `"${fieldLabel}"`);
+        console.log("📤 URL:", pageUrl);
 
-                 const response = await fetch("http://127.0.0.1:8000/api/generate-field-answer", {
+        const response = await fetch("http://127.0.0.1:8000/api/generate-field-answer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            label: fieldLabel,
-            url: pageUrl,
-            user_id: "default", // or dynamic user ID later
-          }),
+          body: JSON.stringify(requestData),
         });
 
         if (!response.ok) {
@@ -70,23 +80,61 @@
       }
     });
   
-    function getFieldLabel(inputEl) {
-      if (inputEl.placeholder) return inputEl.placeholder;
-  
+        function getFieldLabel(inputEl) {
+      console.log("🔍 Looking for closest <label> element...");
+      
+      // 1. First try to find label by ID association
       const id = inputEl.id;
       if (id) {
         const label = document.querySelector(`label[for="${id}"]`);
-        if (label) return label.textContent.trim();
+        if (label) {
+          const labelContent = label.innerHTML.trim();
+          const labelText = label.textContent.trim().replace(/\s+/g, ' ');
+          console.log("✅ Found label by ID - HTML:", labelContent);
+          console.log("✅ Found label by ID - Text:", labelText);
+          return labelText;
+        }
       }
-  
+      
+      // 2. Search UP the DOM tree to find closest label element
+      let current = inputEl;
+      let level = 0;
+      while (current && level < 15) {
+        // Check if current element has any label elements
+        const labels = current.querySelectorAll('label');
+        if (labels.length > 0) {
+          // Get the closest/first label
+          const closestLabel = labels[0];
+          const labelContent = closestLabel.innerHTML.trim();
+          const labelText = closestLabel.textContent.trim().replace(/\s+/g, ' ');
+          console.log(`✅ Found closest label at level ${level} - HTML:`, labelContent);
+          console.log(`✅ Found closest label at level ${level} - Text:`, labelText);
+          return labelText;
+        }
+        
+        // Move to parent element
+        current = current.parentElement;
+        level++;
+      }
+      
+      // 3. Search for any label in nearby DOM structure
       let parent = inputEl.parentElement;
       while (parent) {
-        const text = parent.innerText?.trim();
-        if (text && text.length < 100) return text;
+        const allLabels = parent.getElementsByTagName('label');
+        if (allLabels.length > 0) {
+          for (let label of allLabels) {
+            const labelText = label.textContent.trim().replace(/\s+/g, ' ');
+            if (labelText && labelText.length > 3) {
+              console.log("✅ Found nearby label:", labelText);
+              return labelText;
+            }
+          }
+        }
         parent = parent.parentElement;
       }
-  
-      return 'unknown field';
+      
+      console.log("❌ No <label> element found, using placeholder:", inputEl.placeholder);
+      return inputEl.placeholder || 'unknown field';
     }
   })();
   

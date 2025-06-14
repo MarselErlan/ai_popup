@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const AI_ICON_URL = 'https://upload.wikimedia.org/wikipedia/commons/4/4f/Iconic_AI_logo.svg';
+const AI_ICON_URL = '/ai_popup.png';
 
 export default function PopupInjector() {
   useEffect(() => {
@@ -13,8 +13,10 @@ export default function PopupInjector() {
       height: 32px;
       cursor: pointer;
       display: none;
-      border-radius: 50%;
-      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+      background: transparent;
+      border: none;
+      outline: none;
+      box-shadow: none;
     `;
     document.body.appendChild(aiButton);
 
@@ -25,8 +27,9 @@ export default function PopupInjector() {
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
         currentInput = target as HTMLInputElement;
         const rect = currentInput.getBoundingClientRect();
-        aiButton.style.top = `${window.scrollY + rect.top}px`;
-        aiButton.style.left = `${window.scrollX + rect.right + 10}px`;
+        // Position LEFT side of the input field
+        aiButton.style.top = `${window.scrollY + rect.top + (rect.height - 32) / 2}px`;
+        aiButton.style.left = `${window.scrollX + rect.left - 40}px`;
         aiButton.style.display = 'block';
       } else {
         aiButton.style.display = 'none';
@@ -34,10 +37,15 @@ export default function PopupInjector() {
     };
 
     const onClickAI = async () => {
-      if (!currentInput) return;
+      console.log("🚀 AI button clicked!"); // Test log
+      if (!currentInput) {
+        console.log("❌ No current input found");
+        return;
+      }
 
+      console.log("✅ Current input found:", currentInput);
+      
       // Show loading state
-      const originalValue = currentInput.value;
       currentInput.value = "🧠 AI is thinking...";
       currentInput.disabled = true;
 
@@ -45,16 +53,21 @@ export default function PopupInjector() {
         const fieldLabel = getFieldLabel(currentInput);
         const pageUrl = window.location.href;
 
+        const requestData = {
+          label: fieldLabel,
+          url: pageUrl,
+          user_id: "default", // or dynamic user ID later
+        };
+
         console.log("🧠 Detected field:", fieldLabel);
+        console.log("📤 SENDING TO BACKEND:", requestData);
+        console.log("📤 Question being sent:", `"${fieldLabel}"`);
+        console.log("📤 URL:", pageUrl);
 
         const response = await fetch("http://127.0.0.1:8000/api/generate-field-answer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            label: fieldLabel,
-            url: pageUrl,
-            user_id: "default", // or dynamic user ID later
-          }),
+          body: JSON.stringify(requestData),
         });
 
         if (!response.ok) {
@@ -63,7 +76,12 @@ export default function PopupInjector() {
 
         const data = await response.json();
         currentInput.value = data.answer || "⚠️ No answer returned";
-        console.log("🧠 Filled with:", data);
+        
+        console.log("✅ AI Response received:", data);
+        console.log("🎯 Question asked:", `"${fieldLabel}"`);
+        console.log("💡 Answer provided:", `"${data.answer}"`);
+        console.log("📊 Data source:", data.data_source);
+        console.log("🤔 AI reasoning:", data.reasoning);
       } catch (err) {
         console.error("🚨 Backend call failed:", err);
         currentInput.value = "⚠️ Error getting answer";
@@ -86,20 +104,58 @@ export default function PopupInjector() {
 }
 
 function getFieldLabel(input: HTMLInputElement | HTMLTextAreaElement): string {
-  if (input.placeholder) return input.placeholder;
-
+  console.log("🔍 Looking for closest label...");
+  
+  // 1. First try to find label by ID association
   const id = input.id;
   if (id) {
     const label = document.querySelector(`label[for="${id}"]`);
-    if (label) return label.textContent?.trim() || '';
+    if (label && label.textContent?.trim()) {
+      const labelText = label.textContent.trim().replace(/\s+/g, ' ');
+      console.log("✅ Found label by ID:", labelText);
+      return labelText;
+    }
   }
-
+  
+  // 2. Search for closest label element in parent hierarchy
   let parent = input.parentElement;
-  while (parent) {
-    const text = parent.innerText?.trim();
-    if (text && text.length < 100) return text;
+  let level = 0;
+  while (parent && level < 10) {
+    // Look for any label element within this parent
+    const labels = parent.querySelectorAll('label');
+    if (labels.length > 0) {
+      for (let label of labels) {
+        const labelText = label.textContent?.trim().replace(/\s+/g, ' ');
+        if (labelText && labelText.length > 3 && labelText.length < 500) {
+          console.log(`✅ Found label at level ${level}:`, labelText);
+          return labelText;
+        }
+      }
+    }
+    
     parent = parent.parentElement;
+    level++;
   }
-
-  return "unknown field";
+  
+  // 3. Look for text content in immediate parent that looks like a question
+  parent = input.parentElement;
+  level = 0;
+  while (parent && level < 5) {
+    const text = parent.textContent?.trim();
+    if (text) {
+      const cleanText = text.replace(/\s+/g, ' ').trim();
+      // Check if it looks like a question or form field label
+      if (cleanText.includes('?') || cleanText.match(/^[A-Z][^.]*:?\s*$/)) {
+        if (cleanText.length > 10 && cleanText.length < 300) {
+          console.log(`✅ Found question-like text at level ${level}:`, cleanText);
+          return cleanText;
+        }
+      }
+    }
+    parent = parent.parentElement;
+    level++;
+  }
+  
+  console.log("❌ No label found, using placeholder:", input.placeholder);
+  return input.placeholder || "unknown field";
 }

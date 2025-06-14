@@ -6,7 +6,10 @@ function App() {
 
   return (
     <div style={{ padding: '2rem' }}>
-      <h1>🧠 AI Form Assistant</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        <img src="/ai_popup.png" alt="AI Logo" style={{ width: '48px', height: '48px' }} />
+        <h1 style={{ margin: 0 }}>AI Form Assistant</h1>
+      </div>
       <p>This is a simple AI popup injector project.</p>
       <button
         onClick={() => {
