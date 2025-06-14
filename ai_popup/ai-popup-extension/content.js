@@ -30,12 +30,44 @@
       }
     });
   
-    aiButton.addEventListener('click', () => {
+    aiButton.addEventListener('click', async () => {
       if (!currentInput) return;
   
-      const label = getFieldLabel(currentInput);
-      currentInput.value = 'AI: ' + label;
-      aiButton.style.display = 'none';
+      // Show loading state
+      const originalValue = currentInput.value;
+      currentInput.value = "🧠 AI is thinking...";
+      currentInput.disabled = true;
+
+      try {
+        const fieldLabel = getFieldLabel(currentInput);
+        const pageUrl = window.location.href;
+
+        console.log("🧠 Detected field:", fieldLabel);
+
+                 const response = await fetch("http://127.0.0.1:8000/api/generate-field-answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            label: fieldLabel,
+            url: pageUrl,
+            user_id: "default", // or dynamic user ID later
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        currentInput.value = data.answer || "⚠️ No answer returned";
+        console.log("🧠 Filled with:", data);
+      } catch (err) {
+        console.error("🚨 Backend call failed:", err);
+        currentInput.value = "⚠️ Error getting answer";
+      } finally {
+        currentInput.disabled = false;
+        aiButton.style.display = 'none';
+      }
     });
   
     function getFieldLabel(inputEl) {
