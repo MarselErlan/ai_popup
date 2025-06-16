@@ -76,13 +76,13 @@
         currentInput.value = "⚠️ Error getting answer";
       } finally {
         currentInput.disabled = false;
-        aiButton.style.display = 'none';
+      aiButton.style.display = 'none';
       }
     });
   
-        function getFieldLabel(inputEl) {
+    function getFieldLabel(inputEl) {
       console.log("🔍 Looking for closest <label> element...");
-      
+  
       // 1. First try to find label by ID association
       const id = inputEl.id;
       if (id) {
@@ -132,7 +132,7 @@
         }
         parent = parent.parentElement;
       }
-      
+  
       console.log("❌ No <label> element found, using placeholder:", inputEl.placeholder);
       return inputEl.placeholder || 'unknown field';
     }

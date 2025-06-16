@@ -1,40 +1,84 @@
-import { useState } from 'react';
-import PopupInjector from './PopupInjector';
+import { useState, useEffect } from 'react';
+import Login from './components/Login';
+import Signup from './components/Signup';
+import Dashboard from './components/Dashboard';
+import './App.css';
 
 function App() {
-  const [enabled, setEnabled] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [showSignup, setShowSignup] = useState(false);
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const token = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    
+    if (token && savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (error) {
+        console.error('Error parsing saved user:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    }
+    
+    setLoading(false);
+  }, []);
+
+  const handleLogin = (userData: any) => {
+    setUser(userData);
+  };
+
+  const handleSignup = (userData: any) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
+
+  const switchToSignup = () => {
+    setShowSignup(true);
+  };
+
+  const switchToLogin = () => {
+    setShowSignup(false);
+  };
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f9fafb'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <img 
+            src="/ai_popup.png" 
+            alt="AI Logo" 
+            style={{ width: '48px', height: '48px', marginBottom: '1rem' }} 
+          />
+          <div style={{ color: '#6b7280' }}>Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-        <img src="/ai_popup.png" alt="AI Logo" style={{ width: '48px', height: '48px' }} />
-        <h1 style={{ margin: 0 }}>AI Form Assistant</h1>
-      </div>
-      <p>This is a simple AI popup injector project.</p>
-      <button
-        onClick={() => {
-          alert('clicked');
-          setEnabled(true);
-        }}
-        style={{
-          padding: '10px',
-          marginTop: '10px',
-          backgroundColor: 'blue',
-          color: 'white',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer',
-        }}
-      >
-        Enable AI Assistant
-      </button>
-
-      <div style={{ marginTop: '2rem' }}>
-        <label htmlFor="name">Your Name:</label><br />
-        <input id="name" type="text" placeholder="Enter your name" style={{ padding: '8px', marginTop: '4px', width: '300px' }} />
-      </div>
-
-      {enabled && <PopupInjector />}
+    <div className="App">
+      {user ? (
+        <Dashboard user={user} onLogout={handleLogout} />
+      ) : showSignup ? (
+        <Signup onSignup={handleSignup} onSwitchToLogin={switchToLogin} />
+      ) : (
+        <Login onLogin={handleLogin} onSwitchToSignup={switchToSignup} />
+      )}
     </div>
   );
 }
