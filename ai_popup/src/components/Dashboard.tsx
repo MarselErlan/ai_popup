@@ -220,7 +220,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
               AI Form Assistant
             </h1>
             <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-              Welcome back, {user?.email}
+              Welcome back, {user?.email || 'User'}
             </p>
           </div>
         </div>
