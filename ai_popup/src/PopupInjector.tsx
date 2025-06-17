@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 
-const PopupInjector = () => {
+const PopupInjector: React.FC = () => {
   useEffect(() => {
     const injectPopup = async () => {
       try {

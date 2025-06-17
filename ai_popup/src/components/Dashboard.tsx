@@ -1,9 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { authService } from '../services/authService';
-import type { DocumentStatus } from '../services/authService';
+
+interface User {
+  id: string;
+  email: string;
+}
+
+interface DocumentStatus {
+  resume_uploaded: boolean;
+  personal_info_uploaded: boolean;
+}
 
 interface DashboardProps {
-  user: any;
+  user: User | null;
   onLogout: () => void;
 }
 

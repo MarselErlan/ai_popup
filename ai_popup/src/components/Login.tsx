@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { authService } from '../services/authService';
 
 interface LoginProps {
-  onLogin: (user: any) => void;
+  onLogin: (userData: { userId: string; email: string }) => void;
   onSwitchToSignup: () => void;
 }
 
@@ -57,7 +57,7 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
         }
       }
       
-      onLogin({ id: userId, email });
+      onLogin({ userId, email });
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { authService } from '../services/authService';
 
 interface SignupProps {
-  onSignup: (user: any) => void;
+  onSignup: (userData: { userId: string; email: string }) => void;
   onSwitchToLogin: () => void;
 }
 
@@ -74,7 +74,7 @@ const Signup = ({ onSignup, onSwitchToLogin }: SignupProps) => {
         }
       }
       
-      onSignup({ id: userId, email });
+      onSignup({ userId, email });
     } catch (err: any) {
       setError(err.message || 'Signup failed. Please try again.');
     } finally {
@@ -224,7 +224,7 @@ const Signup = ({ onSignup, onSwitchToLogin }: SignupProps) => {
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#667eea'}
                 onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
-                placeholder="Enter your password"
+                placeholder="Create a password"
               />
               <button
                 type="button"
