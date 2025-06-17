@@ -13,9 +13,9 @@ const api = axios.create({
 
 // Add authorization header if session exists
 api.interceptors.request.use((config) => {
-  const sessionId = localStorage.getItem('sessionId');
+  const sessionId = localStorage.getItem('session_id');
   if (sessionId) {
-    config.headers.Authorization = `Session ${sessionId}`;
+    config.headers.Authorization = sessionId;
   }
   return config;
 });
