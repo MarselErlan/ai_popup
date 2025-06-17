@@ -1,244 +1,315 @@
 /**
- * 🔑 Smart Form Filler - Popup Interface
- * Handles user registration, login, and extension management
+ * 🎯 AI Form Assistant - Popup Script
+ * Handles authentication and user management
  */
 
-// Simple Google Helper Popup Script
-// Focus on user_sessions table only
+const API_BASE_URL = 'http://localhost:8000';
 
-document.addEventListener('DOMContentLoaded', initializePopup);
+class PopupManager {
+  constructor() {
+    this.init();
+  }
 
-// DOM elements
-let loginForm, userSession, errorMessage;
-let emailInput, nameInput, registerBtn, registerText, registerLoading;
-let userEmail, sessionInfo, logoutBtn, errorText;
-
-function initializePopup() {
-  console.log('🚀 Popup initializing...');
-  
-  // Get DOM elements
-  loginForm = document.getElementById('loginForm');
-  userSession = document.getElementById('userSession');
-  errorMessage = document.getElementById('errorMessage');
-  
-  emailInput = document.getElementById('email');
-  nameInput = document.getElementById('name');
-  registerBtn = document.getElementById('registerBtn');
-  registerText = document.getElementById('registerText');
-  registerLoading = document.getElementById('registerLoading');
-  
-  userEmail = document.getElementById('userEmail');
-  sessionInfo = document.getElementById('sessionInfo');
-  logoutBtn = document.getElementById('logoutBtn');
-  errorText = document.getElementById('errorText');
-  
-  // Set up event listeners
-  registerBtn.addEventListener('click', handleRegister);
-  logoutBtn.addEventListener('click', handleLogout);
-  
-  // Check current session status
-  checkSessionStatus();
-  
-  console.log('✅ Popup initialized');
-}
-
-// Check if user has active session
-async function checkSessionStatus() {
-  try {
-    const response = await chrome.runtime.sendMessage({ action: 'getSession' });
+  async init() {
+    console.log('🎯 Popup Manager initialized');
     
-    if (response.session) {
-      showUserSession(response.session);
+    // Check if user is already logged in
+    const token = await this.getStoredToken();
+    if (token) {
+      await this.showDashboard();
     } else {
-      showLoginForm();
+      this.showLoginForm();
     }
-  } catch (error) {
-    console.error('❌ Session check failed:', error);
-    showError('Failed to check session status');
-  }
-}
 
-// Show login form
-function showLoginForm() {
-  loginForm.classList.remove('hidden');
-  userSession.classList.add('hidden');
-  errorMessage.classList.add('hidden');
-  
-  // Pre-fill email if available
-  const email = localStorage.getItem('lastEmail') || '';
-  if (email) {
-    emailInput.value = email;
+    this.setupEventListeners();
   }
-}
 
-// Show user session info
-function showUserSession(session) {
-  loginForm.classList.add('hidden');
-  userSession.classList.remove('hidden');
-  errorMessage.classList.add('hidden');
-  
-  // Display user info
-  userEmail.textContent = localStorage.getItem('userEmail') || 'User';
-  
-  // Format session info
-  const createdDate = new Date(session.created_at);
-  const timeAgo = getTimeAgo(createdDate);
-  sessionInfo.textContent = `Session started ${timeAgo}`;
-  
-  console.log('✅ User session displayed');
-}
-
-// Show error message
-function showError(message) {
-  errorMessage.classList.remove('hidden');
-  errorText.textContent = message;
-  
-  // Auto-hide after 5 seconds
-  setTimeout(() => {
-    errorMessage.classList.add('hidden');
-  }, 5000);
-}
-
-// Handle user registration
-async function handleRegister() {
-  const email = emailInput.value.trim();
-  const name = nameInput.value.trim();
-  
-  // Basic validation
-  if (!email || !name) {
-    showError('Please fill in all fields');
-    return;
-  }
-  
-  if (!isValidEmail(email)) {
-    showError('Please enter a valid email address');
-    return;
-  }
-  
-  // Show loading state
-  setLoadingState(true);
-  
-  try {
-    console.log('📝 Registering user:', email);
+  setupEventListeners() {
+    // Login form
+    document.getElementById('loginBtn').addEventListener('click', () => this.handleLogin());
+    document.getElementById('switchToSignupBtn').addEventListener('click', () => this.showSignupForm());
     
-    // Send registration request to background script
-    const response = await chrome.runtime.sendMessage({
-      action: 'register',
-      email: email,
-      name: name
+    // Signup form
+    document.getElementById('signupBtn').addEventListener('click', () => this.handleSignup());
+    document.getElementById('switchToLoginBtn').addEventListener('click', () => this.showLoginForm());
+    
+    // Dashboard
+    document.getElementById('logoutBtn').addEventListener('click', () => this.handleLogout());
+
+    // Enter key handling
+    document.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        
+        if (!loginForm.classList.contains('hidden')) {
+          this.handleLogin();
+        } else if (!signupForm.classList.contains('hidden')) {
+          this.handleSignup();
+        }
+      }
     });
-    
-    if (response.success) {
-      // Store user info for display
-      localStorage.setItem('userEmail', email);
-      localStorage.setItem('lastEmail', email);
-      
-      console.log('✅ Registration successful');
-      showUserSession(response.session);
-      
-      // Notify content scripts of session update
-      notifyContentScripts(true);
-      
-    } else {
-      throw new Error(response.error || 'Registration failed');
-    }
-    
-  } catch (error) {
-    console.error('❌ Registration failed:', error);
-    showError(error.message || 'Registration failed. Please try again.');
-  } finally {
-    setLoadingState(false);
   }
-}
 
-// Handle logout
-async function handleLogout() {
-  try {
-    console.log('🚪 Logging out...');
-    
-    const response = await chrome.runtime.sendMessage({ action: 'logout' });
-    
-    if (response.success) {
-      // Clear stored data
-      localStorage.removeItem('userEmail');
-      
-      console.log('✅ Logout successful');
-      showLoginForm();
-      
-      // Notify content scripts of session update
-      notifyContentScripts(false);
-      
-    } else {
-      throw new Error(response.error || 'Logout failed');
-    }
-    
-  } catch (error) {
-    console.error('❌ Logout failed:', error);
-    showError(error.message || 'Logout failed');
+  showLoginForm() {
+    document.getElementById('loginForm').classList.remove('hidden');
+    document.getElementById('signupForm').classList.add('hidden');
+    document.getElementById('dashboard').classList.add('hidden');
+    document.getElementById('email').focus();
   }
-}
 
-// Set loading state for register button
-function setLoadingState(loading) {
-  if (loading) {
-    registerBtn.disabled = true;
-    registerText.classList.add('hidden');
-    registerLoading.classList.remove('hidden');
-  } else {
-    registerBtn.disabled = false;
-    registerText.classList.remove('hidden');
-    registerLoading.classList.add('hidden');
+  showSignupForm() {
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('signupForm').classList.remove('hidden');
+    document.getElementById('dashboard').classList.add('hidden');
+    document.getElementById('signupEmail').focus();
   }
-}
 
-// Notify content scripts of session changes
-async function notifyContentScripts(hasSession) {
-  try {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs[0]) {
-      await chrome.tabs.sendMessage(tabs[0].id, {
-        action: 'sessionUpdated',
-        hasSession: hasSession
-      });
-    }
-  } catch (error) {
-    // Content script might not be loaded, ignore error
-    console.log('Content script not available on this page');
+  async showDashboard() {
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('signupForm').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    
+    // Load user info and status
+    await this.loadUserInfo();
+    await this.checkDocumentStatus();
   }
-}
 
-// Utility functions
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
+  async handleLogin() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
 
-function getTimeAgo(date) {
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-  
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins} minutes ago`;
-  if (diffHours < 24) return `${diffHours} hours ago`;
-  if (diffDays < 7) return `${diffDays} days ago`;
-  return date.toLocaleDateString();
-}
-
-// Handle keyboard shortcuts
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter') {
-    if (!userSession.classList.contains('hidden')) {
-      // Already logged in, do nothing
+    if (!email || !password) {
+      this.showError('Please fill in all fields', 'errorMessage');
       return;
     }
-    
-    // Trigger registration on Enter
-    event.preventDefault();
-    handleRegister();
+
+    this.setLoading('login', true);
+    this.hideError('errorMessage');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Login failed');
+      }
+
+      // Store authentication data
+      await this.storeAuthData(data.access_token, data.user);
+      
+      // Notify content script about authentication
+      this.notifyContentScript();
+      
+      this.showSuccess('Login successful!');
+      await this.showDashboard();
+
+    } catch (error) {
+      console.error('Login error:', error);
+      this.showError(error.message, 'errorMessage');
+    } finally {
+      this.setLoading('login', false);
+    }
   }
+
+  async handleSignup() {
+    const email = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('signupPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (!email || !password || !confirmPassword) {
+      this.showError('Please fill in all fields', 'signupErrorMessage');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      this.showError('Passwords do not match', 'signupErrorMessage');
+      return;
+    }
+
+    if (password.length < 6) {
+      this.showError('Password must be at least 6 characters', 'signupErrorMessage');
+      return;
+    }
+
+    this.setLoading('signup', true);
+    this.hideError('signupErrorMessage');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Signup failed');
+      }
+
+      // Store authentication data
+      await this.storeAuthData(data.access_token, data.user);
+      
+      // Notify content script about authentication
+      this.notifyContentScript();
+      
+      this.showSuccess('Account created successfully!');
+      await this.showDashboard();
+
+    } catch (error) {
+      console.error('Signup error:', error);
+      this.showError(error.message, 'signupErrorMessage');
+    } finally {
+      this.setLoading('signup', false);
+    }
+  }
+
+  async handleLogout() {
+    await chrome.storage.local.clear();
+    this.showLoginForm();
+    this.showSuccess('Logged out successfully');
+  }
+
+  async loadUserInfo() {
+    try {
+      const token = await this.getStoredToken();
+      const userData = await this.getStoredUser();
+      
+      if (userData) {
+        document.getElementById('userEmail').textContent = userData.email;
+        document.getElementById('userId').textContent = `ID: ${userData.id}`;
+      }
+    } catch (error) {
+      console.error('Error loading user info:', error);
+    }
+  }
+
+  async checkDocumentStatus() {
+    try {
+      const token = await this.getStoredToken();
+      const userData = await this.getStoredUser();
+      
+      if (!token || !userData) return;
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/documents/status?user_id=${userData.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const status = await response.json();
+        
+        // Update resume status
+        const resumeStatus = document.getElementById('resumeStatus');
+        if (status.resume_uploaded) {
+          resumeStatus.textContent = 'Ready';
+          resumeStatus.className = 'status-value status-ready';
+        } else {
+          resumeStatus.textContent = 'Missing';
+          resumeStatus.className = 'status-value status-missing';
+        }
+        
+        // Update personal info status
+        const personalInfoStatus = document.getElementById('personalInfoStatus');
+        if (status.personal_info_uploaded) {
+          personalInfoStatus.textContent = 'Ready';
+          personalInfoStatus.className = 'status-value status-ready';
+        } else {
+          personalInfoStatus.textContent = 'Missing';
+          personalInfoStatus.className = 'status-value status-missing';
+        }
+      } else {
+        // Set default status if API call fails
+        document.getElementById('resumeStatus').textContent = 'Unknown';
+        document.getElementById('personalInfoStatus').textContent = 'Unknown';
+      }
+    } catch (error) {
+      console.error('Error checking document status:', error);
+      document.getElementById('resumeStatus').textContent = 'Error';
+      document.getElementById('personalInfoStatus').textContent = 'Error';
+    }
+  }
+
+  async storeAuthData(token, user) {
+    await chrome.storage.local.set({
+      token: token,
+      user: user
+    });
+  }
+
+  async getStoredToken() {
+    const result = await chrome.storage.local.get('token');
+    return result.token;
+  }
+
+  async getStoredUser() {
+    const result = await chrome.storage.local.get('user');
+    return result.user;
+  }
+
+  notifyContentScript() {
+    // Notify all tabs about authentication update
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach(tab => {
+        chrome.tabs.sendMessage(tab.id, { action: 'authenticationUpdated' }, () => {
+          // Ignore errors for tabs that don't have content script
+          if (chrome.runtime.lastError) {
+            // Silent fail
+          }
+        });
+      });
+    });
+  }
+
+  setLoading(type, isLoading) {
+    const textElement = document.getElementById(`${type}Text`);
+    const loadingElement = document.getElementById(`${type}Loading`);
+    const buttonElement = document.getElementById(`${type}Btn`);
+    
+    if (isLoading) {
+      textElement.classList.add('hidden');
+      loadingElement.classList.remove('hidden');
+      buttonElement.disabled = true;
+    } else {
+      textElement.classList.remove('hidden');
+      loadingElement.classList.add('hidden');
+      buttonElement.disabled = false;
+    }
+  }
+
+  showError(message, elementId) {
+    const errorElement = document.getElementById(elementId);
+    errorElement.textContent = message;
+    errorElement.classList.remove('hidden');
+  }
+
+  hideError(elementId) {
+    const errorElement = document.getElementById(elementId);
+    errorElement.classList.add('hidden');
+  }
+
+  showSuccess(message) {
+    const successElement = document.getElementById('successMessage');
+    if (successElement) {
+      successElement.textContent = message;
+      successElement.classList.remove('hidden');
+      
+      // Hide after 3 seconds
+      setTimeout(() => {
+        successElement.classList.add('hidden');
+      }, 3000);
+    }
+  }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  new PopupManager();
 });
 
-console.log('🎯 Popup script ready'); 
+console.log('🎯 AI Form Assistant popup script loaded');

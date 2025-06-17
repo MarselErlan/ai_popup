@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Google Helper</title>
+  <title>AI Form Assistant</title>
   <style>
     * {
       margin: 0;
@@ -12,122 +12,147 @@
     }
 
     body {
-      width: 320px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #4285f4, #34a853);
+      width: 380px;
+      min-height: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
     }
 
     .container {
-      padding: 20px;
+      padding: 24px;
     }
 
     .header {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .logo {
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 5px;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
     .subtitle {
-      font-size: 12px;
+      font-size: 14px;
       opacity: 0.9;
+      font-weight: 400;
     }
 
     .card {
       background: white;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 15px;
-      color: #333;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      color: #374151;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     }
 
     .form-group {
-      margin-bottom: 15px;
+      margin-bottom: 20px;
     }
 
     label {
       display: block;
-      margin-bottom: 5px;
-      font-weight: 500;
+      margin-bottom: 8px;
+      font-weight: 600;
       font-size: 14px;
+      color: #374151;
     }
 
     input {
       width: 100%;
-      padding: 10px;
-      border: 2px solid #e1e5e9;
-      border-radius: 8px;
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
       font-size: 14px;
-      transition: border-color 0.3s;
+      transition: all 0.2s;
+      background: #f9fafb;
     }
 
     input:focus {
       outline: none;
-      border-color: #4285f4;
+      border-color: #667eea;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
 
     .btn {
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       border: none;
-      border-radius: 8px;
+      border-radius: 12px;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
     .btn-primary {
-      background: #4285f4;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
     }
 
     .btn-primary:hover {
-      background: #3367d6;
       transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
     }
 
     .btn-secondary {
-      background: #f8f9fa;
-      color: #5f6368;
-      border: 1px solid #dadce0;
+      background: #f3f4f6;
+      color: #6b7280;
+      border: 1px solid #d1d5db;
     }
 
     .btn-secondary:hover {
-      background: #e8eaed;
+      background: #e5e7eb;
+    }
+
+    .btn-link {
+      background: none;
+      color: #667eea;
+      text-decoration: underline;
+      padding: 8px;
+      font-size: 13px;
+    }
+
+    .btn-link:hover {
+      color: #5a67d8;
     }
 
     .status-card {
-      background: #e8f5e8;
-      border-left: 4px solid #34a853;
-      color: #137333;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      border: none;
     }
 
     .error-card {
-      background: #fce8e6;
-      border-left: 4px solid #ea4335;
-      color: #d93025;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      border: none;
     }
 
     .hidden {
-      display: none;
+      display: none !important;
     }
 
     .loading {
       display: inline-block;
       width: 16px;
       height: 16px;
-      border: 2px solid #f3f3f3;
-      border-top: 2px solid #4285f4;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top: 2px solid white;
       border-radius: 50%;
       animation: spin 1s linear infinite;
-      margin-right: 8px;
     }
 
     @keyframes spin {
@@ -139,7 +164,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
     }
 
     .user-details {
@@ -148,93 +173,181 @@
 
     .user-email {
       font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .user-id {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .status-section {
+      margin-bottom: 20px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .status-item:last-child {
+      border-bottom: none;
+    }
+
+    .status-label {
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .status-value {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 6px;
       font-weight: 500;
     }
 
-    .session-info {
-      font-size: 12px;
-      opacity: 0.7;
-      margin-top: 2px;
+    .status-ready {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-missing {
+      background: #fef3c7;
+      color: #92400e;
     }
 
     .instructions {
       font-size: 12px;
-      line-height: 1.4;
+      line-height: 1.5;
       opacity: 0.8;
       text-align: center;
-      margin-top: 10px;
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
     }
 
-    .google-sites {
-      font-size: 11px;
-      opacity: 0.6;
-      text-align: center;
-      margin-top: 10px;
+    .error-message {
+      background: #fef2f2;
+      color: #dc2626;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      border-left: 4px solid #dc2626;
+    }
+
+    .success-message {
+      background: #f0fdf4;
+      color: #166534;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      border-left: 4px solid #16a34a;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">🤖 AI Helper</div>
-      <div class="subtitle">Google Forms Assistant</div>
+      <div class="logo">
+        🤖 AI Assistant
+      </div>
+      <div class="subtitle">Smart Form Filling</div>
     </div>
 
     <!-- Login Form -->
     <div id="loginForm" class="card">
+      <div id="errorMessage" class="error-message hidden"></div>
+      
       <div class="form-group">
         <label for="email">Email Address</label>
-        <input type="email" id="email" placeholder="your.email@gmail.com" required>
+        <input type="email" id="email" placeholder="your.email@example.com" required>
       </div>
       
       <div class="form-group">
-        <label for="name">Your Name</label>
-        <input type="text" id="name" placeholder="John Doe" required>
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Enter your password" required>
       </div>
       
-      <button id="registerBtn" class="btn btn-primary">
-        <span id="registerText">Start Using AI Helper</span>
-        <span id="registerLoading" class="loading hidden"></span>
+      <button id="loginBtn" class="btn btn-primary">
+        <span id="loginText">Login</span>
+        <span id="loginLoading" class="loading hidden"></span>
       </button>
       
-      <div class="instructions">
-        Enter your details to start using AI form filling on Google sites
-      </div>
+      <button id="switchToSignupBtn" class="btn btn-link">
+        Don't have an account? Sign up
+      </button>
     </div>
 
-    <!-- User Session -->
-    <div id="userSession" class="card hidden">
+    <!-- Signup Form -->
+    <div id="signupForm" class="card hidden">
+      <div id="signupErrorMessage" class="error-message hidden"></div>
+      
+      <div class="form-group">
+        <label for="signupEmail">Email Address</label>
+        <input type="email" id="signupEmail" placeholder="your.email@example.com" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="signupPassword">Password</label>
+        <input type="password" id="signupPassword" placeholder="Create a password" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" placeholder="Confirm your password" required>
+      </div>
+      
+      <button id="signupBtn" class="btn btn-primary">
+        <span id="signupText">Create Account</span>
+        <span id="signupLoading" class="loading hidden"></span>
+      </button>
+      
+      <button id="switchToLoginBtn" class="btn btn-link">
+        Already have an account? Login
+      </button>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="card hidden">
+      <div id="successMessage" class="success-message hidden"></div>
+      
       <div class="user-info">
         <div class="user-details">
           <div class="user-email" id="userEmail"></div>
-          <div class="session-info" id="sessionInfo"></div>
+          <div class="user-id" id="userId"></div>
         </div>
       </div>
-      
-      <div class="status-card" style="margin-bottom: 15px; padding: 10px; border-radius: 6px;">
-        ✅ AI Helper is active on Google sites
+
+      <div class="status-section">
+        <div class="status-item">
+          <span class="status-label">Resume</span>
+          <span class="status-value" id="resumeStatus">Checking...</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Personal Info</span>
+          <span class="status-value" id="personalInfoStatus">Checking...</span>
+        </div>
       </div>
-      
-      <div style="font-size: 12px; margin-bottom: 15px; line-height: 1.4;">
-        <strong>How to use:</strong><br>
-        • Click any form field to auto-fill<br>
-        • Use <strong>Ctrl+Shift+F</strong> to fill manually<br>
-        • Works on Google Forms, Docs, and more
-      </div>
-      
+
       <button id="logoutBtn" class="btn btn-secondary">
-        Sign Out
+        Logout
       </button>
     </div>
 
-    <!-- Error Message -->
-    <div id="errorMessage" class="card error-card hidden">
-      <div id="errorText"></div>
-    </div>
-
-    <!-- Footer -->
-    <div class="google-sites">
-      Works on: forms.google.com • docs.google.com • *.google.com
+    <div class="instructions">
+      <strong>How to use:</strong><br>
+      1. Login with your account<br>
+      2. Upload resume & personal info on the web app<br>
+      3. Click the AI button next to form fields<br>
+      4. AI will automatically fill the field
     </div>
   </div>
 

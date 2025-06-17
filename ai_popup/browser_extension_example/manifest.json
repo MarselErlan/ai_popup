@@ -1,18 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "AI Popup - Google Forms Helper",
-  "version": "1.0.0",
-  "description": "Simple AI form filling for Google sites with session management",
+  "name": "AI Popup - Form Assistant",
+  "version": "2.0.0",
+  "description": "AI-powered form filling assistant with authentication and document management",
   
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "scripting"
   ],
   
   "host_permissions": [
+    "http://localhost:*/*",
+    "http://127.0.0.1:*/*",
     "https://*.google.com/*",
     "https://docs.google.com/*",
-    "https://forms.google.com/*"
+    "https://forms.google.com/*",
+    "https://*.linkedin.com/*",
+    "https://*.indeed.com/*",
+    "https://*.glassdoor.com/*",
+    "*://*/*"
   ],
   
   "background": {
@@ -22,9 +29,15 @@
   "content_scripts": [
     {
       "matches": [
+        "http://localhost:*/*",
+        "http://127.0.0.1:*/*",
         "https://*.google.com/*",
         "https://docs.google.com/*", 
-        "https://forms.google.com/*"
+        "https://forms.google.com/*",
+        "https://*.linkedin.com/*",
+        "https://*.indeed.com/*",
+        "https://*.glassdoor.com/*",
+        "*://*/*"
       ],
       "js": ["content-script.js"],
       "run_at": "document_end"
@@ -33,8 +46,15 @@
   
   "action": {
     "default_popup": "popup.html",
-    "default_title": "AI Popup - Google Helper"
+    "default_title": "AI Popup - Form Assistant"
   },
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["ai_popup.png"],
+      "matches": ["*://*/*"]
+    }
+  ],
   
   "icons": {
     "16": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiByeD0iNCIgZmlsbD0iIzQyODVGNCIvPgo8dGV4dCB4PSI4IiB5PSIxMSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5BSTwvdGV4dD4KPHN2Zz4K",

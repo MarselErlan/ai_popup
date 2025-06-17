@@ -1,290 +1,206 @@
 /**
- * 🎯 Smart Form Filler - Content Script
- * Detects and fills form fields automatically
+ * 🎯 AI Form Assistant - Content Script
+ * Matches the functionality of PopupInjector.tsx with authentication
  */
 
-class FormFiller {
-  constructor() {
-    this.isEnabled = true;
-    this.filledFields = new Set();
-    this.init();
-  }
+(function () {
+  // Use extension icon URL
+  const AI_ICON_URL = chrome.runtime.getURL('ai_popup.png');
 
-  async init() {
-    console.log('🎯 Form Filler initialized on:', window.location.href);
-    
-    // Check if user is logged in
-    const userData = await this.getUserData();
-    if (!userData.user_id) {
-      console.log('👤 User not logged in, form filling disabled');
+  const aiButton = document.createElement('img');
+  aiButton.src = AI_ICON_URL;
+  aiButton.style.cssText = `
+    position: absolute;
+    z-index: 999999;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    display: none;
+    background: transparent;
+    border: none;
+    outline: none;
+    box-shadow: none;
+  `;
+  document.body.appendChild(aiButton);
+
+  let currentInput = null;
+
+  document.addEventListener('focusin', (e) => {
+    const target = e.target;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+      currentInput = target;
+      const rect = target.getBoundingClientRect();
+      // Position LEFT side of the input field
+      aiButton.style.top = (window.scrollY + rect.top + (rect.height - 32) / 2) + 'px';
+      aiButton.style.left = (window.scrollX + rect.left - 40) + 'px';
+      aiButton.style.display = 'block';
+    } else {
+      aiButton.style.display = 'none';
+    }
+  });
+
+  aiButton.addEventListener('click', async () => {
+    console.log("🚀 AI button clicked!");
+    if (!currentInput) {
+      console.log("❌ No current input found");
       return;
     }
 
-    console.log('✅ User logged in:', userData.user_email);
-    this.setupEventListeners();
-    this.addVisualIndicators();
-  }
-
-  async getUserData() {
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ action: 'getStoredData' }, resolve);
-    });
-  }
-
-  setupEventListeners() {
-    // Auto-fill on focus
-    document.addEventListener('focusin', (event) => {
-      if (this.isFormField(event.target) && !this.filledFields.has(event.target)) {
-        this.handleFieldFocus(event.target);
-      }
-    });
-
-    // Add right-click context menu (future enhancement)
-    document.addEventListener('contextmenu', (event) => {
-      if (this.isFormField(event.target)) {
-        this.lastRightClickedField = event.target;
-      }
-    });
-
-    // Keyboard shortcut (Ctrl+Shift+F to fill current field)
-    document.addEventListener('keydown', (event) => {
-      if (event.ctrlKey && event.shiftKey && event.key === 'F') {
-        event.preventDefault();
-        const activeElement = document.activeElement;
-        if (this.isFormField(activeElement)) {
-          this.fillField(activeElement);
-        }
-      }
-    });
-  }
-
-  isFormField(element) {
-    if (!element || !element.tagName) return false;
+    console.log("✅ Current input found:", currentInput);
     
-    const tagName = element.tagName.toLowerCase();
-    const type = element.type?.toLowerCase();
-    
-    // Support various input types
-    if (tagName === 'input') {
-      const supportedTypes = ['text', 'email', 'tel', 'url', 'search', 'password'];
-      return supportedTypes.includes(type) || !type;
-    }
-    
-    // Support textareas
-    if (tagName === 'textarea') return true;
-    
-    // Support contenteditable elements
-    if (element.contentEditable === 'true') return true;
-    
-    return false;
-  }
-
-  async handleFieldFocus(field) {
-    // Add visual indicator
-    this.addFieldIndicator(field);
-    
-    // Small delay to ensure field is ready
-    setTimeout(() => {
-      this.fillField(field);
-    }, 300);
-  }
-
-  async fillField(field) {
-    if (this.filledFields.has(field)) {
-      console.log('🔄 Field already filled, skipping');
-      return;
-    }
+    // Show loading state
+    currentInput.value = "🧠 AI is thinking...";
+    currentInput.disabled = true;
 
     try {
-      // Show loading indicator
-      this.showLoadingIndicator(field);
-      
-      // Get field label/context
-      const fieldLabel = this.getFieldLabel(field);
-      console.log('🎯 Filling field:', fieldLabel);
+      const fieldLabel = getFieldLabel(currentInput);
+      const pageUrl = window.location.href;
 
-      // Request field answer from background script
-      const response = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({
-          action: 'generateFieldAnswer',
-          label: fieldLabel,
-          url: window.location.href
-        }, resolve);
+      // Get authentication token from extension storage
+      let token = null;
+      try {
+        const result = await chrome.storage.local.get('token');
+        token = result.token;
+        console.log("🔐 Token from storage:", token ? "✅ Found" : "❌ Not found");
+      } catch (err) {
+        console.log("⚠️ Could not access extension storage:", err);
+      }
+
+      const requestData = {
+        label: fieldLabel,
+        url: pageUrl,
+        user_id: "default", // Will be extracted from token by backend
+      };
+
+      console.log("🧠 Detected field:", fieldLabel);
+      console.log("📤 SENDING TO BACKEND:", requestData);
+      console.log("📤 Question being sent:", `"${fieldLabel}"`);
+      console.log("📤 URL:", pageUrl);
+      console.log("🔑 Token being sent:", token ? `${token.substring(0, 30)}...` : "❌ NO TOKEN");
+
+      const headers = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+        console.log("✅ Authorization header added");
+      } else {
+        console.log("❌ No token found - request may fail with 403");
+      }
+
+      const response = await fetch("http://localhost:8000/api/generate-field-answer", {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify(requestData),
       });
 
-      this.hideLoadingIndicator(field);
-
-      if (response.success !== false && response.answer) {
-        // Fill the field
-        this.setFieldValue(field, response.answer);
-        this.filledFields.add(field);
-        this.showSuccessIndicator(field, response.answer);
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.log("🚨 Backend error response:", errorText);
+        console.log("🚨 Response status:", response.status);
         
-        console.log('✅ Field filled:', fieldLabel, '→', response.answer);
-      } else {
-        console.log('❌ Failed to get field answer:', response.error);
-        this.showErrorIndicator(field);
+        if (response.status === 403) {
+          currentInput.value = "🔐 Please login to use AI assistant";
+          console.log("🔐 Authentication required - please login through extension popup");
+        } else {
+          throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        }
+        return;
       }
 
-    } catch (error) {
-      console.error('❌ Fill field error:', error);
-      this.hideLoadingIndicator(field);
-      this.showErrorIndicator(field);
+      const data = await response.json();
+      currentInput.value = data.answer || "⚠️ No answer returned";
+      
+      console.log("✅ AI Response received:", data);
+      console.log("🎯 Question asked:", `"${fieldLabel}"`);
+      console.log("💡 Answer provided:", `"${data.answer}"`);
+      console.log("📊 Data source:", data.data_source);
+      console.log("🤔 AI reasoning:", data.reasoning);
+    } catch (err) {
+      console.error("🚨 Backend call failed:", err);
+      currentInput.value = "⚠️ Error getting answer";
+    } finally {
+      currentInput.disabled = false;
+      aiButton.style.display = 'none';
     }
-  }
-
-  getFieldLabel(field) {
-    // Try multiple methods to get field context
-    
-    // 1. Placeholder text
-    if (field.placeholder && field.placeholder.trim()) {
-      return field.placeholder.trim();
-    }
-    
-    // 2. Associated label
-    if (field.id) {
-      const label = document.querySelector(`label[for="${field.id}"]`);
-      if (label && label.textContent.trim()) {
-        return label.textContent.trim();
-      }
-    }
-    
-    // 3. Parent label
-    const parentLabel = field.closest('label');
-    if (parentLabel && parentLabel.textContent.trim()) {
-      return parentLabel.textContent.trim();
-    }
-    
-    // 4. Aria-label
-    if (field.getAttribute('aria-label')) {
-      return field.getAttribute('aria-label').trim();
-    }
-    
-    // 5. Name attribute
-    if (field.name && field.name.trim()) {
-      return field.name.replace(/[_-]/g, ' ').trim();
-    }
-    
-    // 6. Previous text content
-    const prevElement = field.previousElementSibling;
-    if (prevElement && prevElement.textContent.trim()) {
-      return prevElement.textContent.trim();
-    }
-    
-    // 7. Fallback
-    return 'Unknown Field';
-  }
-
-  setFieldValue(field, value) {
-    // Set the value
-    field.value = value;
-    
-    // Trigger events to ensure the form recognizes the change
-    const events = ['input', 'change', 'blur'];
-    events.forEach(eventType => {
-      field.dispatchEvent(new Event(eventType, { bubbles: true }));
-    });
-    
-    // For React/Vue forms
-    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype, 'value'
-    ).set;
-    nativeInputValueSetter.call(field, value);
-    
-    field.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-
-  // Visual Indicators
-  addVisualIndicators() {
-    // Add CSS for indicators
-    if (!document.getElementById('smart-form-filler-styles')) {
-      const style = document.createElement('style');
-      style.id = 'smart-form-filler-styles';
-      style.textContent = `
-        .smart-fill-indicator {
-          position: relative;
-        }
-        .smart-fill-indicator::after {
-          content: '🤖';
-          position: absolute;
-          right: 5px;
-          top: 50%;
-          transform: translateY(-50%);
-          font-size: 12px;
-          opacity: 0.7;
-          pointer-events: none;
-        }
-        .smart-fill-loading::after {
-          content: '⏳';
-          animation: pulse 1s infinite;
-        }
-        .smart-fill-success::after {
-          content: '✅';
-          animation: flash 0.5s;
-        }
-        .smart-fill-error::after {
-          content: '❌';
-          animation: flash 0.5s;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 0.7; }
-          50% { opacity: 1; }
-        }
-        @keyframes flash {
-          0%, 100% { opacity: 0.7; }
-          50% { opacity: 1; }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-  }
-
-  addFieldIndicator(field) {
-    field.classList.add('smart-fill-indicator');
-  }
-
-  showLoadingIndicator(field) {
-    field.classList.remove('smart-fill-success', 'smart-fill-error');
-    field.classList.add('smart-fill-loading');
-  }
-
-  hideLoadingIndicator(field) {
-    field.classList.remove('smart-fill-loading');
-  }
-
-  showSuccessIndicator(field, answer) {
-    field.classList.remove('smart-fill-loading', 'smart-fill-error');
-    field.classList.add('smart-fill-success');
-    
-    // Show tooltip with the answer
-    field.title = `Smart Fill: ${answer}`;
-    
-    // Remove success indicator after 3 seconds
-    setTimeout(() => {
-      field.classList.remove('smart-fill-success');
-    }, 3000);
-  }
-
-  showErrorIndicator(field) {
-    field.classList.remove('smart-fill-loading', 'smart-fill-success');
-    field.classList.add('smart-fill-error');
-    
-    field.title = 'Smart Fill: Failed to generate answer';
-    
-    // Remove error indicator after 3 seconds
-    setTimeout(() => {
-      field.classList.remove('smart-fill-error');
-    }, 3000);
-  }
-}
-
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    new FormFiller();
   });
-} else {
-  new FormFiller();
-}
 
-console.log('🎯 Smart Form Filler content script loaded!'); 
+  function getFieldLabel(input) {
+    console.log("🔍 Looking for closest label...");
+    
+    // 1. First try to find label by ID association
+    const id = input.id;
+    if (id) {
+      const label = document.querySelector(`label[for="${id}"]`);
+      if (label && label.textContent?.trim()) {
+        const labelText = label.textContent.trim().replace(/\s+/g, ' ');
+        console.log("✅ Found label by ID:", labelText);
+        return labelText;
+      }
+    }
+    
+    // 2. Search for closest label element in parent hierarchy
+    let parent = input.parentElement;
+    let level = 0;
+    while (parent && level < 10) {
+      // Look for any label element within this parent
+      const labels = parent.querySelectorAll('label');
+      if (labels.length > 0) {
+        for (let label of labels) {
+          const labelText = label.textContent?.trim().replace(/\s+/g, ' ');
+          if (labelText && labelText.length > 3 && labelText.length < 500) {
+            console.log(`✅ Found label at level ${level}:`, labelText);
+            return labelText;
+          }
+        }
+      }
+      
+      parent = parent.parentElement;
+      level++;
+    }
+    
+    // 3. Look for text content in immediate parent that looks like a question
+    parent = input.parentElement;
+    level = 0;
+    while (parent && level < 5) {
+      const text = parent.textContent?.trim();
+      if (text) {
+        const cleanText = text.replace(/\s+/g, ' ').trim();
+        // Check if it looks like a question or form field label
+        if (cleanText.includes('?') || cleanText.match(/^[A-Z][^.]*:?\s*$/)) {
+          if (cleanText.length > 10 && cleanText.length < 300) {
+            console.log(`✅ Found question-like text at level ${level}:`, cleanText);
+            return cleanText;
+          }
+        }
+      }
+      parent = parent.parentElement;
+      level++;
+    }
+    
+    // 4. Check for aria-label
+    if (input.getAttribute('aria-label')) {
+      const ariaLabel = input.getAttribute('aria-label').trim();
+      console.log("✅ Found aria-label:", ariaLabel);
+      return ariaLabel;
+    }
+    
+    // 5. Check name attribute
+    if (input.name && input.name.trim()) {
+      const nameLabel = input.name.replace(/[_-]/g, ' ').trim();
+      console.log("✅ Found name attribute:", nameLabel);
+      return nameLabel;
+    }
+    
+    console.log("❌ No label found, using placeholder:", input.placeholder);
+    return input.placeholder || "unknown field";
+  }
+
+  // Listen for authentication updates from popup
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'authenticationUpdated') {
+      console.log("🔐 Authentication updated, token available for future requests");
+    }
+  });
+
+  console.log("🎯 AI Form Assistant content script loaded");
+  console.log("🔧 Ready to assist with form filling");
+})();

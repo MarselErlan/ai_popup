@@ -1,215 +1,176 @@
-# 🤖 AI Google Helper - Browser Extension
+# AI Form Assistant - Browser Extension
 
-A simple browser extension that helps fill Google forms automatically using AI. Focused specifically on Google sites with ultra-simple session management.
+A Chrome/Firefox extension that provides AI-powered form filling capabilities using your uploaded resume and personal information.
 
-## 🎯 **What it does**
+## 🚀 Features
 
-- **🌐 Google Sites Only**: Works on forms.google.com, docs.google.com, and other Google sites
-- **🤖 AI Form Filling**: Click any form field to auto-fill with AI-generated content
-- **⚡ Simple Sessions**: One-click registration with persistent login
-- **📱 Visual Feedback**: Real-time indicators showing field filling progress
+- **Smart Form Detection**: Automatically detects form fields and shows AI assistance button
+- **Intelligent Field Filling**: Uses AI to generate appropriate responses based on field context
+- **Secure Authentication**: Login with your account to access your documents
+- **Document Status Tracking**: Shows status of uploaded resume and personal info
+- **Cross-Site Compatibility**: Works on job sites, forms, and applications
 
-## 🚀 **Quick Setup**
+## 📋 Prerequisites
 
-### 1. Load Extension in Chrome
+1. **Backend API running** on `http://localhost:8000`
+2. **React Web App** with uploaded resume and personal information
+3. **User account** created through the web app
+
+## 🛠️ Installation
+
+### Chrome Extension
 
 1. Open Chrome and go to `chrome://extensions/`
-2. Enable "Developer mode" (top right toggle)
+2. Enable "Developer mode" (toggle in top right)
 3. Click "Load unpacked"
-4. Select this folder: `ai_popup/browser_extension_example/`
+4. Select the `browser_extension_example` folder
+5. Extension should appear in your toolbar
 
-### 2. Start Your Backend API
+### Firefox Extension
 
-Make sure your API server is running:
+1. Open Firefox and go to `about:debugging`
+2. Click "This Firefox"
+3. Click "Load Temporary Add-on"
+4. Select the `manifest.json` file from `browser_extension_example` folder
+5. Extension should appear in your toolbar
 
-```bash
-# Your API should be running on http://localhost:8000
-# With these endpoints available:
-# - POST /api/simple/register
-# - POST /api/session/create
-# - GET  /api/session/current/{user_id}
-# - POST /api/generate-field-answer
+## 🎯 How to Use
+
+### 1. Initial Setup
+
+- Click the extension icon in your browser toolbar
+- Login with your existing account credentials
+- Verify that your resume and personal info show as "Ready"
+
+### 2. Form Filling
+
+- Navigate to any job application or form website
+- Click on any input field (text input or textarea)
+- An AI button (🤖) will appear to the left of the field
+- Click the AI button to automatically fill the field with relevant information
+
+### 3. Supported Sites
+
+- Job boards (LinkedIn, Indeed, Glassdoor)
+- Company career pages
+- Application forms
+- Google Forms
+- Any website with form fields
+
+## 🔧 Configuration
+
+### API Endpoints
+
+The extension connects to these backend endpoints:
+
+- `POST /api/auth/login` - User authentication
+- `POST /api/auth/register` - User registration
+- `GET /api/v1/documents/status` - Check document upload status
+- `POST /api/generate-field-answer` - Generate field answers
+
+### Storage
+
+The extension stores:
+
+- Authentication token (JWT)
+- User information
+- Extension preferences
+
+## 🔍 Troubleshooting
+
+### Authentication Issues
+
+- **403 Forbidden**: Login through extension popup
+- **Token expired**: Logout and login again
+- **No documents**: Upload resume/personal info via web app
+
+### Form Filling Issues
+
+- **No AI button**: Refresh page and try again
+- **Wrong answers**: Check that documents are uploaded correctly
+- **Fields not detected**: Try clicking directly on the input field
+
+### Console Debugging
+
+Open browser DevTools (F12) and check:
+
+- Console logs for extension activity
+- Network tab for API calls
+- Storage tab for saved tokens
+
+## 🏗️ Architecture
+
+```
+Browser Extension
+├── manifest.json       # Extension configuration
+├── popup.html         # Extension popup UI
+├── popup.js           # Popup logic & authentication
+├── content-script.js  # Injected form detection
+├── background.js      # Extension lifecycle
+└── ai_popup.png       # Extension icon
 ```
 
-### 3. Register & Use
+### Content Script Flow
 
-1. Click the extension icon in Chrome
-2. Enter your email and name
-3. Click "Start Using AI Helper"
-4. Visit any Google form and click fields to auto-fill!
+1. Detects form fields on page load
+2. Shows AI button when field is focused
+3. Sends field context to backend API
+4. Receives and fills appropriate answer
 
-## 🎯 **How to Use**
+### Authentication Flow
 
-### Method 1: Auto-Fill on Click
+1. User logs in through extension popup
+2. JWT token stored in extension storage
+3. Token sent with all API requests
+4. Content script notified of auth status
 
-- Go to any Google form
-- Click on any input field
-- Watch it fill automatically with AI! 🤖
+## 🔐 Security
 
-### Method 2: Keyboard Shortcut
+- JWT tokens stored securely in browser extension storage
+- All API calls use HTTPS in production
+- No sensitive data stored in content scripts
+- Tokens automatically cleared on logout
 
-- Focus on any form field
-- Press `Ctrl+Shift+F`
-- Field gets filled instantly
-
-### Method 3: Visual Indicators
-
-- 🤖 = Ready to fill
-- ⏳ = Processing
-- ✅ = Successfully filled
-- ❌ = Error occurred
-
-## 🌐 **Supported Sites**
-
-- **Google Forms**: forms.google.com
-- **Google Docs**: docs.google.com
-- **Google Sites**: \*.google.com
-- **Gmail**: mail.google.com (form fields)
-
-## 📋 **Simple Database Schema**
-
-This extension uses only the `user_sessions` table for maximum simplicity:
-
-```sql
--- users table (basic info)
-users (
-  user_id,
-  email,
-  name,
-  created_at
-)
-
--- user_sessions table (session management)
-user_sessions (
-  session_id,
-  user_id,
-  device_info,
-  is_active,
-  created_at,
-  last_used_at
-)
-```
-
-## 🔧 **API Integration**
-
-### Registration Flow
-
-```javascript
-// 1. Register user
-POST /api/simple/register
-{
-  "email": "user@gmail.com",
-  "name": "John Doe",
-  "password": "simple-session"
-}
-
-// 2. Create session
-POST /api/session/create
-{
-  "user_id": "user-uuid",
-  "device_info": "Chrome Extension - Google Helper"
-}
-
-// 3. Store session locally in browser
-```
-
-### Form Filling Flow
-
-```javascript
-// Fill form field
-POST /api/generate-field-answer
-{
-  "field_name": "email",
-  "field_type": "email",
-  "field_label": "Email Address",
-  "user_id": "user-uuid"
-}
-```
-
-## 🎨 **Extension Features**
-
-### Background Script (`background.js`)
-
-- Simple session management
-- API communication
-- Cross-tab session sync
-
-### Content Script (`content-script.js`)
-
-- Google site detection
-- Form field identification
-- Real-time form filling
-
-### Popup Interface (`popup.html`)
-
-- Clean, Google-style design
-- One-click registration
-- Session status display
-
-## 🔒 **Privacy & Security**
-
-- **Local Storage**: Session data stored locally in browser
-- **Google Only**: Works only on trusted Google domains
-- **Simple Auth**: Basic email/name registration (no complex passwords)
-- **Session-Based**: Uses session IDs instead of permanent tokens
-
-## 🐛 **Troubleshooting**
-
-### Extension Not Working?
-
-1. Check if API server is running on `http://localhost:8000`
-2. Verify you're on a Google site (forms.google.com, docs.google.com)
-3. Check browser console for error messages
-
-### Fields Not Filling?
-
-1. Make sure you're registered (click extension icon)
-2. Try the keyboard shortcut: `Ctrl+Shift+F`
-3. Check if field is supported (text, email, textarea)
-
-### Session Issues?
-
-1. Click extension icon → Sign Out → Register again
-2. Clear browser data for the extension
-3. Reload the page after re-registering
-
-## 📊 **Performance**
-
-- **First Fill**: ~2-3 seconds (AI processing)
-- **Subsequent Fills**: ~1-2 seconds (optimized)
-- **Memory Usage**: <5MB (lightweight)
-- **Google Sites Only**: No impact on other websites
-
-## 🛠️ **Development**
+## 📝 Development
 
 ### File Structure
 
-```
-browser_extension_example/
-├── manifest.json       # Extension config (Google sites only)
-├── background.js       # Session management
-├── content-script.js   # Form detection & filling
-├── popup.html         # Simple registration UI
-├── popup.js           # UI logic
-└── README.md          # This file
-```
+- `manifest.json` - Extension metadata and permissions
+- `popup.html/js` - User interface and authentication
+- `content-script.js` - Form detection and AI integration
+- `background.js` - Extension lifecycle management
 
-### Testing
+### Key Components
 
-1. Load extension in Chrome
-2. Visit `forms.google.com/create`
-3. Create a test form
-4. Fill fields to test auto-fill
+- **PopupManager**: Handles login/signup/dashboard
+- **Content Script**: Injects AI buttons and handles form filling
+- **Background Script**: Manages extension lifecycle
+
+### API Integration
+
+The extension mirrors the React app's authentication and API patterns:
+
+- Same login/signup endpoints
+- Same document status checking
+- Same field answer generation
+
+## 🌟 Features in Development
+
+- [ ] Keyboard shortcuts for form filling
+- [ ] Custom field mappings
+- [ ] Form auto-detection improvements
+- [ ] Multi-language support
+- [ ] Advanced field context analysis
+
+## 📞 Support
+
+If you encounter issues:
+
+1. Check browser console for errors
+2. Verify backend API is running
+3. Ensure documents are uploaded via web app
+4. Try refreshing the page and extension
 
 ---
 
-## 🎉 **That's It!**
-
-Your simple AI Google Helper is ready to use!
-
-- ✅ **One-click setup**
-- ✅ **Google sites focused**
-- ✅ **Simple session management**
-- ✅ **AI-powered form filling**
-
-Just register once and enjoy automatic form filling on all Google sites! 🚀
+**Note**: This extension requires the AI Form Assistant web application and backend API to be running locally for full functionality.
