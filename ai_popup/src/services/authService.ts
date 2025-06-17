@@ -88,6 +88,13 @@ export interface DocumentStatus {
   personal_info_status?: string;
 }
 
+export interface UpdateSessionResponse {
+  status: string;
+  session_id: string;
+  user_id: string;
+  message: string;
+}
+
 export const authService = {
   // Helper methods for auth data management
   clearAuthData() {
@@ -129,47 +136,33 @@ export const authService = {
     }
   },
 
-  // Login user - now handles session reuse
+  // Login user - now with optimized session handling
   async login(credentials: LoginCredentials): Promise<{ userId: string; email: string; sessionId: string }> {
     try {
       console.log('Attempting login with credentials:', { email: credentials.email });
       
-      // First check if we have an existing session
-      const existingSessionId = localStorage.getItem('session_id');
-      const existingUserId = localStorage.getItem('user_id');
-      
-      if (existingSessionId && existingUserId) {
-        try {
-          // Validate existing session
-          const sessionResponse = await api.get(`/api/session/current/${existingSessionId}`);
-          if (sessionResponse.data?.user_id === existingUserId) {
-            console.log('Reusing existing session:', existingSessionId);
-            return {
-              userId: existingUserId,
-              email: sessionResponse.data.email,
-              sessionId: existingSessionId
-            };
-          }
-        } catch (e) {
-          console.log('Existing session invalid, proceeding with new login');
-          this.clearAuthData();
-        }
-      }
-      
-      // Proceed with login if no valid session exists
+      // First authenticate the user
       const loginResponse = await api.post('/api/simple/login', {
         email: credentials.email,
         password: credentials.password
       });
       
       console.log('Login response:', loginResponse.data);
-      const { status, user_id, email, session_id, message } = loginResponse.data;
+      const { user_id, email } = loginResponse.data;
 
-      if (!user_id || !email || !session_id) {
+      if (!user_id || !email) {
         throw new Error('Invalid login response format');
       }
 
-      // Store the new auth data
+      // Check and update session
+      const sessionResponse = await api.post<UpdateSessionResponse>(
+        `/api/session/check-and-update/${user_id}`
+      );
+
+      console.log('Session response:', sessionResponse.data);
+      const { session_id } = sessionResponse.data;
+
+      // Store the auth data
       await this.setAuthData({
         userId: user_id,
         email,
