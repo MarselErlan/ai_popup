@@ -103,7 +103,7 @@ const Signup = ({ onSignup, onSwitchToLogin }: SignupProps) => {
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <img 
-            src="/vite.svg" 
+            src="./ai_popup.png" 
             alt="AI Logo" 
             style={{ width: '64px', height: '64px', marginBottom: '1rem' }} 
           />

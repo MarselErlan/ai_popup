@@ -93,33 +93,26 @@ export const authService = {
     try {
       console.log('Attempting login with credentials:', { email: credentials.email });
       
-      // Step 1: Validate user credentials
+      // Authenticate user
       const loginResponse = await api.post('/api/simple/login', {
         email: credentials.email,
         password: credentials.password
       });
       
       console.log('Login response:', loginResponse.data);
-      const { user_id, email } = loginResponse.data;
+      const { status, user_id, email, message } = loginResponse.data;
 
       if (!user_id || !email) {
         throw new Error('Invalid login response format');
       }
 
-      // Step 2: Create a new session
-      console.log('Creating session for user:', user_id);
-      const sessionResponse = await api.post('/api/create-session', { user_id });
-      console.log('Session response:', sessionResponse.data);
-      const { session_id } = sessionResponse.data;
-
-      if (!session_id) {
-        throw new Error('Invalid session response format');
-      }
+      // Generate a session ID from the user_id
+      const sessionId = `session_${user_id}`;
 
       return {
         userId: user_id,
         email,
-        sessionId: session_id
+        sessionId
       };
     } catch (error: any) {
       console.error('Login error details:', {
