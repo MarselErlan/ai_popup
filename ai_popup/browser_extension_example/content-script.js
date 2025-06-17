@@ -64,8 +64,8 @@
         console.log("🔐 Token from storage:", token ? "✅ Found" : "❌ Not found");
       } catch (err) {
         console.log("⚠️ Could not access extension storage:", err);
-      }
-
+    }
+    
       const requestData = {
         label: fieldLabel,
         url: pageUrl,
@@ -100,7 +100,7 @@
         if (response.status === 403) {
           currentInput.value = "🔐 Please login to use AI assistant";
           console.log("🔐 Authentication required - please login through extension popup");
-        } else {
+      } else {
           throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
         return;
@@ -188,8 +188,8 @@
       const nameLabel = input.name.replace(/[_-]/g, ' ').trim();
       console.log("✅ Found name attribute:", nameLabel);
       return nameLabel;
-    }
-    
+  }
+
     console.log("❌ No label found, using placeholder:", input.placeholder);
     return input.placeholder || "unknown field";
   }
@@ -198,7 +198,7 @@
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'authenticationUpdated') {
       console.log("🔐 Authentication updated, token available for future requests");
-    }
+}
   });
 
   console.log("🎯 AI Form Assistant content script loaded");
