@@ -100,19 +100,16 @@ export const authService = {
       });
       
       console.log('Login response:', loginResponse.data);
-      const { status, user_id, email, message } = loginResponse.data;
+      const { status, user_id, email, session_id, message } = loginResponse.data;
 
-      if (!user_id || !email) {
+      if (!user_id || !email || !session_id) {
         throw new Error('Invalid login response format');
       }
-
-      // Generate a session ID from the user_id
-      const sessionId = `session_${user_id}`;
 
       return {
         userId: user_id,
         email,
-        sessionId
+        sessionId: session_id
       };
     } catch (error: any) {
       console.error('Login error details:', {
