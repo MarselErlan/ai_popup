@@ -44,7 +44,7 @@ const Signup = ({ onSignup, onSwitchToLogin }: SignupProps) => {
     }
 
     try {
-      const response = await authService.signup({
+      await authService.signup({
         name: formData.name,
         email: formData.email,
         password: formData.password
@@ -100,7 +100,7 @@ const Signup = ({ onSignup, onSwitchToLogin }: SignupProps) => {
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <img 
-            src="/ai_popup.png" 
+            src="/vite.svg" 
             alt="AI Logo" 
             style={{ width: '64px', height: '64px', marginBottom: '1rem' }} 
           />

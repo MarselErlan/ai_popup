@@ -91,13 +91,30 @@ export const authService = {
   // Login user
   async login(credentials: LoginCredentials): Promise<{ userId: string; email: string; sessionId: string }> {
     try {
+      console.log('Attempting login with credentials:', { email: credentials.email });
+      
       // Step 1: Validate user credentials
-      const loginResponse = await api.post('/api/simple/login', credentials);
+      const loginResponse = await api.post('/api/simple/login', {
+        email: credentials.email,
+        password: credentials.password
+      });
+      
+      console.log('Login response:', loginResponse.data);
       const { user_id, email } = loginResponse.data;
 
+      if (!user_id || !email) {
+        throw new Error('Invalid login response format');
+      }
+
       // Step 2: Create a new session
+      console.log('Creating session for user:', user_id);
       const sessionResponse = await api.post('/api/create-session', { user_id });
+      console.log('Session response:', sessionResponse.data);
       const { session_id } = sessionResponse.data;
+
+      if (!session_id) {
+        throw new Error('Invalid session response format');
+      }
 
       return {
         userId: user_id,
@@ -105,10 +122,20 @@ export const authService = {
         sessionId: session_id
       };
     } catch (error: any) {
-      console.error('Login error:', error.response?.data || error.message);
+      console.error('Login error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      
+      if (error.response?.status === 401) {
+        throw new Error('Invalid email or password');
+      }
+      
       if (error.response?.data?.detail) {
         throw new Error(error.response.data.detail);
       }
+      
       throw new Error(error.message || 'Login failed');
     }
   },
