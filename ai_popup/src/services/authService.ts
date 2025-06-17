@@ -136,13 +136,13 @@ export const authService = {
     }
   },
 
-  // Login user - now with optimized session handling
+  // Login user - now with separate session management
   async login(credentials: LoginCredentials): Promise<{ userId: string; email: string; sessionId: string }> {
     try {
       console.log('Attempting login with credentials:', { email: credentials.email });
       
       // First authenticate the user
-      const loginResponse = await api.post('/api/simple/login', {
+      const loginResponse = await api.post<LoginResponse>('/api/simple/login', {
         email: credentials.email,
         password: credentials.password
       });
@@ -154,7 +154,7 @@ export const authService = {
         throw new Error('Invalid login response format');
       }
 
-      // Check and update session
+      // Check and update session - this will ensure only one active session
       const sessionResponse = await api.post<UpdateSessionResponse>(
         `/api/session/check-and-update/${user_id}`
       );
