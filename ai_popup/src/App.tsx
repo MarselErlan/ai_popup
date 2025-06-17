@@ -3,6 +3,7 @@ import Login from './components/Login';
 import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
 import PopupInjector from './PopupInjector';
+import { authService } from './services/authService';
 import './App.css';
 
 function App() {
@@ -12,17 +13,12 @@ function App() {
 
   useEffect(() => {
     // Check if user is already logged in
-    const token = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
+    const sessionId = localStorage.getItem('session_id');
+    const userId = localStorage.getItem('user_id');
+    const email = localStorage.getItem('user_email');
     
-    if (token && savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error('Error parsing saved user:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
+    if (sessionId && userId) {
+      setUser({ id: userId, email });
     }
     
     setLoading(false);
@@ -38,21 +34,17 @@ function App() {
     setShowSignup(false); // Reset to login view
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    
-    // Also clear browser extension storage if available
-    if (typeof window !== 'undefined' && (window as any).chrome?.storage) {
-      try {
-        (window as any).chrome.storage.local.remove(['token', 'user']);
-      } catch (e) {
-        console.log('Chrome storage not available:', e);
-      }
+  const handleLogout = async () => {
+    try {
+      await authService.logout(); // This will handle both API call and storage cleanup
+      setUser(null);
+      setShowSignup(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if the API call fails, we still want to clear the local state
+      setUser(null);
+      setShowSignup(false);
     }
-    
-    setUser(null);
-    setShowSignup(false);
   };
 
   const switchToSignup = () => {

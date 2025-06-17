@@ -63,8 +63,8 @@ A Chrome/Firefox extension that provides AI-powered form filling capabilities us
 
 The extension connects to these backend endpoints:
 
-- `POST /api/auth/login` - User authentication
-- `POST /api/auth/register` - User registration
+- `POST /api/simple/login` - User authentication
+- `POST /api/simple/register` - User registration
 - `GET /api/v1/documents/status` - Check document upload status
 - `POST /api/generate-field-answer` - Generate field answers
 

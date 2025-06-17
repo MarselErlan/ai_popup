@@ -34,28 +34,30 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
     }
 
     try {
-      const response = await authService.login({
+      const { userId, email, sessionId } = await authService.login({
         email: formData.email,
         password: formData.password
       });
       
       // Store authentication data
-      localStorage.setItem('token', response.access_token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem('session_id', sessionId);
+      localStorage.setItem('user_id', userId);
+      localStorage.setItem('user_email', email);
       
       // Also store in browser extension storage if available
       if (typeof window !== 'undefined' && (window as any).chrome?.storage) {
         try {
           await (window as any).chrome.storage.local.set({
-            token: response.access_token,
-            user: response.user
+            session_id: sessionId,
+            user_id: userId,
+            user_email: email
           });
         } catch (e) {
           console.log('Chrome storage not available:', e);
         }
       }
       
-      onLogin(response.user);
+      onLogin({ id: userId, email });
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {
