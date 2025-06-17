@@ -44,24 +44,27 @@ const Signup = ({ onSignup, onSwitchToLogin }: SignupProps) => {
     }
 
     try {
-      await authService.signup({
+      // Step 1: Register the user
+      const signupResponse = await authService.signup({
         name: formData.name,
         email: formData.email,
         password: formData.password
       });
       
-      // After successful signup, create a session
+      console.log('User registered successfully:', signupResponse);
+
+      // Step 2: Now login with the newly created credentials
       const { userId, email, sessionId } = await authService.login({
         email: formData.email,
         password: formData.password
       });
       
-      // Store authentication data
+      // Step 3: Store authentication data
       localStorage.setItem('session_id', sessionId);
       localStorage.setItem('user_id', userId);
       localStorage.setItem('user_email', email);
       
-      // Also store in browser extension storage if available
+      // Step 4: Also store in browser extension storage if available
       if (typeof window !== 'undefined' && (window as any).chrome?.storage) {
         try {
           await (window as any).chrome.storage.local.set({

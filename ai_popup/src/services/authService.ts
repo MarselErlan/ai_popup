@@ -143,6 +143,8 @@ export const authService = {
   // Signup user
   async signup(credentials: SignupCredentials): Promise<LoginResponse> {
     try {
+      console.log('Attempting signup with:', { email: credentials.email });
+      
       // Backend expects 'email' and 'password' only for register endpoint
       const registerData = {
         email: credentials.email,
@@ -150,9 +152,28 @@ export const authService = {
       };
       
       const response = await api.post('/api/simple/register', registerData);
-      return response.data;
+      console.log('Signup response:', response.data);
+      
+      const { status, user_id, email, message } = response.data;
+      
+      if (!user_id || !email) {
+        throw new Error('Invalid registration response format');
+      }
+
+      // Return the registration response without creating a session
+      return {
+        status,
+        user_id,
+        email,
+        message
+      };
     } catch (error: any) {
-      console.error('Signup error:', error.response?.data || error.message);
+      console.error('Signup error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      
       if (error.response?.data?.detail) {
         throw new Error(error.response.data.detail);
       }
