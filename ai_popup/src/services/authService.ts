@@ -20,13 +20,13 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle session expiration
+// Handle session expiration and cleanup
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('session_id');
-      localStorage.removeItem('user_id');
+      // Clear all auth data
+      authService.clearAuthData();
       window.location.href = '/';
     }
     return Promise.reject(error);
@@ -89,12 +89,74 @@ export interface DocumentStatus {
 }
 
 export const authService = {
-  // Login user
+  // Helper methods for auth data management
+  clearAuthData() {
+    localStorage.removeItem('session_id');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('user_email');
+    
+    // Also clear from extension storage if available
+    if (typeof window !== 'undefined' && (window as any).chrome?.storage) {
+      try {
+        (window as any).chrome.storage.local.remove([
+          'session_id',
+          'user_id',
+          'user_email'
+        ]);
+      } catch (e) {
+        console.log('Chrome storage not available:', e);
+      }
+    }
+  },
+
+  async setAuthData(data: { userId: string; email: string; sessionId: string }) {
+    // Store in localStorage
+    localStorage.setItem('session_id', data.sessionId);
+    localStorage.setItem('user_id', data.userId);
+    localStorage.setItem('user_email', data.email);
+    
+    // Also store in extension storage if available
+    if (typeof window !== 'undefined' && (window as any).chrome?.storage) {
+      try {
+        await (window as any).chrome.storage.local.set({
+          session_id: data.sessionId,
+          user_id: data.userId,
+          user_email: data.email
+        });
+      } catch (e) {
+        console.log('Chrome storage not available:', e);
+      }
+    }
+  },
+
+  // Login user - now handles session reuse
   async login(credentials: LoginCredentials): Promise<{ userId: string; email: string; sessionId: string }> {
     try {
       console.log('Attempting login with credentials:', { email: credentials.email });
       
-      // Authenticate user
+      // First check if we have an existing session
+      const existingSessionId = localStorage.getItem('session_id');
+      const existingUserId = localStorage.getItem('user_id');
+      
+      if (existingSessionId && existingUserId) {
+        try {
+          // Validate existing session
+          const sessionResponse = await api.get(`/api/session/current/${existingSessionId}`);
+          if (sessionResponse.data?.user_id === existingUserId) {
+            console.log('Reusing existing session:', existingSessionId);
+            return {
+              userId: existingUserId,
+              email: sessionResponse.data.email,
+              sessionId: existingSessionId
+            };
+          }
+        } catch (e) {
+          console.log('Existing session invalid, proceeding with new login');
+          this.clearAuthData();
+        }
+      }
+      
+      // Proceed with login if no valid session exists
       const loginResponse = await api.post('/api/simple/login', {
         email: credentials.email,
         password: credentials.password
@@ -106,6 +168,13 @@ export const authService = {
       if (!user_id || !email || !session_id) {
         throw new Error('Invalid login response format');
       }
+
+      // Store the new auth data
+      await this.setAuthData({
+        userId: user_id,
+        email,
+        sessionId: session_id
+      });
 
       return {
         userId: user_id,
@@ -136,6 +205,9 @@ export const authService = {
     try {
       console.log('Attempting signup with:', { email: credentials.email });
       
+      // Clear any existing auth data before signup
+      this.clearAuthData();
+      
       // Backend expects 'email' and 'password' only for register endpoint
       const registerData = {
         email: credentials.email,
@@ -151,7 +223,6 @@ export const authService = {
         throw new Error('Invalid registration response format');
       }
 
-      // Return the registration response without creating a session
       return {
         status,
         user_id,
@@ -302,14 +373,16 @@ export const authService = {
   },
 
   // Get current user info
-  async getCurrentUserInfo(): Promise<User> {
-    try {
-      const response = await api.get('/api/auth/me');
-      return response.data;
-    } catch (error: any) {
-      console.error('Get user info error:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.detail || error.message || 'Failed to get user info');
-    }
+  getCurrentUser(): { id: string; email?: string } | null {
+    const userId = localStorage.getItem('user_id');
+    const email = localStorage.getItem('user_email');
+    
+    if (!userId) return null;
+    
+    return {
+      id: userId,
+      email: email || undefined
+    };
   },
 
   // Validate session
@@ -353,45 +426,30 @@ export const authService = {
     }
   },
 
-  // Logout user
+  // Logout - now properly cleans up sessions
   async logout(): Promise<void> {
     try {
       const sessionId = localStorage.getItem('session_id');
       if (sessionId) {
-        await api.post('/api/logout', { session_id: sessionId });
+        // Attempt to invalidate session on backend
+        await api.delete(`/api/session/${sessionId}`);
       }
-      localStorage.removeItem('session_id');
-      localStorage.removeItem('user_id');
-      
-      // Also clear browser extension storage if available
-      if (typeof window !== 'undefined' && (window as any).chrome?.storage) {
-        try {
-          await (window as any).chrome.storage.local.remove(['session_id', 'user_id']);
-        } catch (e) {
-          console.log('Chrome storage not available:', e);
-        }
-      }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Logout error:', error);
-      // Still clear local storage even if API call fails
-      localStorage.removeItem('session_id');
-      localStorage.removeItem('user_id');
+    } finally {
+      // Always clear local auth data
+      this.clearAuthData();
     }
   },
 
   // Check if user is authenticated
   isAuthenticated(): boolean {
-    return !!localStorage.getItem('session_id');
+    return !!(localStorage.getItem('session_id') && localStorage.getItem('user_id'));
   },
 
-  // Get current user from localStorage
-  getCurrentUser(): { id: string; email?: string } | null {
-    const userId = localStorage.getItem('user_id');
-    const email = localStorage.getItem('user_email');
-    if (userId) {
-      return { id: userId, email: email || undefined };
-    }
-    return null;
+  // Get current user info
+  getCurrentUserInfo(): Promise<User> {
+    return this.getCurrentUserInfo();
   }
 };
 
