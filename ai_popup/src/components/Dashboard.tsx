@@ -35,7 +35,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   const loadDocumentsStatus = async () => {
     setStatusLoading(true);
     try {
-      const status = await authService.getDocumentsStatus(user?.id || 'default');
+      const status = await authService.getDocumentsStatus();
       setDocumentsStatus(status);
     } catch (error: any) {
       console.error('Failed to load documents status:', error);
@@ -81,13 +81,13 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
 
     try {
       if (type === 'resume') {
-        await authService.uploadResume(file, user?.id || 'default');
+        await authService.uploadResume(file);
         setActionStatus({
           type: 'success',
           message: 'Resume uploaded successfully!'
         });
       } else {
-        await authService.uploadPersonalInfo(file, user?.id || 'default');
+        await authService.uploadPersonalInfo(file);
         setActionStatus({
           type: 'success',
           message: 'Personal info uploaded successfully!'
@@ -111,7 +111,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     setActionStatus(null);
 
     try {
-      const response = await authService.reembedResume(user?.id || 'default');
+      const response = await authService.reembedResume();
       setActionStatus({ 
         type: 'success', 
         message: response.message || 'Resume re-embedded successfully!' 
@@ -133,7 +133,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     setActionStatus(null);
 
     try {
-      const response = await authService.reembedPersonalInfo(user?.id || 'default');
+      const response = await authService.reembedPersonalInfo();
       setActionStatus({ 
         type: 'success', 
         message: response.message || 'Personal info re-embedded successfully!' 
@@ -153,8 +153,8 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   const handleDownload = async (type: 'resume' | 'personalInfo') => {
     try {
       const blob = type === 'resume' 
-        ? await authService.downloadResume(user?.id || 'default')
-        : await authService.downloadPersonalInfo(user?.id || 'default');
+        ? await authService.downloadResume()
+        : await authService.downloadPersonalInfo();
       
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -179,9 +179,9 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
 
     try {
       if (type === 'resume') {
-        await authService.deleteResume(user?.id || 'default');
+        await authService.deleteResume();
       } else {
-        await authService.deletePersonalInfo(user?.id || 'default');
+        await authService.deletePersonalInfo();
       }
       
       setActionStatus({

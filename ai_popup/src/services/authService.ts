@@ -8,11 +8,12 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true
 });
 
 // Add authorization header if session exists
 api.interceptors.request.use((config) => {
-  const sessionId = localStorage.getItem('session_id');
+  const sessionId = localStorage.getItem('sessionId');
   if (sessionId) {
     config.headers.Authorization = `Session ${sessionId}`;
   }
@@ -172,11 +173,10 @@ export const authService = {
   },
 
   // Upload resume file
-  async uploadResume(file: File, userId: string): Promise<any> {
+  async uploadResume(file: File): Promise<any> {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('user_id', userId);
 
       const response = await api.post('/api/v1/resume/upload', formData, {
         headers: {
@@ -191,11 +191,10 @@ export const authService = {
   },
 
   // Upload personal info file
-  async uploadPersonalInfo(file: File, userId: string): Promise<any> {
+  async uploadPersonalInfo(file: File): Promise<any> {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('user_id', userId);
 
       const response = await api.post('/api/v1/personal-info/upload', formData, {
         headers: {
@@ -210,9 +209,9 @@ export const authService = {
   },
 
   // Delete resume
-  async deleteResume(userId: string): Promise<any> {
+  async deleteResume(): Promise<any> {
     try {
-      const response = await api.delete(`/api/v1/resume/delete?user_id=${userId}`);
+      const response = await api.delete('/api/v1/resume/delete');
       return response.data;
     } catch (error: any) {
       console.error('Resume delete error:', error.response?.data || error.message);
@@ -232,9 +231,9 @@ export const authService = {
   },
 
   // Download resume
-  async downloadResume(userId: string): Promise<Blob> {
+  async downloadResume(): Promise<Blob> {
     try {
-      const response = await api.get(`/api/v1/resume/download?user_id=${userId}`, {
+      const response = await api.get('/api/v1/resume/download', {
         responseType: 'blob'
       });
       return response.data;
@@ -258,9 +257,9 @@ export const authService = {
   },
 
   // Reembed resume from database
-  async reembedResume(userId: string): Promise<any> {
+  async reembedResume(): Promise<any> {
     try {
-      const response = await api.post(`/api/v1/resume/reembed?user_id=${userId}`);
+      const response = await api.post('/api/v1/resume/reembed');
       return response.data;
     } catch (error: any) {
       console.error('Resume reembed error:', error.response?.data || error.message);
@@ -269,9 +268,9 @@ export const authService = {
   },
 
   // Reembed personal info from database
-  async reembedPersonalInfo(userId: string): Promise<any> {
+  async reembedPersonalInfo(): Promise<any> {
     try {
-      const response = await api.post(`/api/v1/personal-info/reembed?user_id=${userId}`);
+      const response = await api.post('/api/v1/personal-info/reembed');
       return response.data;
     } catch (error: any) {
       console.error('Personal info reembed error:', error.response?.data || error.message);
@@ -280,9 +279,9 @@ export const authService = {
   },
 
   // Get documents status
-  async getDocumentsStatus(userId: string): Promise<DocumentStatus> {
+  async getDocumentsStatus(): Promise<DocumentStatus> {
     try {
-      const response = await api.get(`/api/v1/documents/status?user_id=${userId}`);
+      const response = await api.get('/api/v1/documents/status');
       
       // The actual document status is nested inside response.data.data
       const documentStatus = response.data.data || response.data;
@@ -335,17 +334,21 @@ export const authService = {
     }
   },
 
-  // Generate field answer (main API endpoint)
-  async generateFieldAnswer(label: string, url: string, userId: string): Promise<any> {
+  // Generate field answer
+  async generateFieldAnswer(fieldData: {
+    field_type: string;
+    field_name: string;
+    field_id: string;
+    field_class: string;
+    field_label: string;
+    field_placeholder: string;
+    surrounding_text: string;
+  }): Promise<string> {
     try {
-      const response = await api.post('/api/generate-field-answer', {
-        label,
-        url,
-        user_id: userId
-      });
-      return response.data;
+      const response = await api.post('/api/generate-field-answer', fieldData);
+      return response.data.answer;
     } catch (error: any) {
-      console.error('Generate field answer error:', error.response?.data || error.message);
+      console.error('Field answer generation error:', error.response?.data || error.message);
       throw new Error(error.response?.data?.detail || error.message || 'Failed to generate field answer');
     }
   },
