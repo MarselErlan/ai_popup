@@ -210,7 +210,19 @@ export const authService = {
   async getDocumentsStatus(userId: string): Promise<DocumentStatus> {
     try {
       const response = await api.get(`/api/v1/documents/status?user_id=${userId}`);
-      return response.data;
+      
+      // The actual document status is nested inside response.data.data
+      const documentStatus = response.data.data || response.data;
+      
+      // Transform the API response to match our expected format
+      const transformedStatus: DocumentStatus = {
+        resume_uploaded: !!(documentStatus.resume && documentStatus.resume.filename),
+        personal_info_uploaded: !!(documentStatus.personal_info && documentStatus.personal_info.filename),
+        resume_status: documentStatus.resume?.processing_status || 'unknown',
+        personal_info_status: documentStatus.personal_info?.processing_status || 'unknown'
+      };
+      
+      return transformedStatus;
     } catch (error: any) {
       console.error('Documents status error:', error.response?.data || error.message);
       throw new Error(error.response?.data?.detail || error.message || 'Failed to get documents status');
