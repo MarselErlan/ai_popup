@@ -193,7 +193,7 @@ export const authService = {
     }
   },
 
-  // Signup user
+  // Signup user with better error handling
   async signup(credentials: SignupCredentials): Promise<LoginResponse> {
     try {
       console.log('Attempting signup with:', { email: credentials.email });
@@ -207,21 +207,34 @@ export const authService = {
         password: credentials.password
       };
       
-      const response = await api.post('/api/simple/register', registerData);
-      console.log('Signup response:', response.data);
-      
-      const { status, user_id, email, message } = response.data;
-      
-      if (!user_id || !email) {
-        throw new Error('Invalid registration response format');
-      }
+      try {
+        const response = await api.post('/api/simple/register', registerData);
+        console.log('Signup response:', response.data);
+        
+        const { status, user_id, email, message } = response.data;
+        
+        if (!user_id || !email) {
+          throw new Error('Invalid registration response format');
+        }
 
-      return {
-        status,
-        user_id,
-        email,
-        message
-      };
+        return {
+          status,
+          user_id,
+          email,
+          message
+        };
+      } catch (error: any) {
+        // Handle specific error cases
+        if (error.response?.status === 409) {
+          throw new Error('This email is already registered. Please login instead.');
+        }
+        
+        if (error.response?.data?.detail) {
+          throw new Error(error.response.data.detail);
+        }
+        
+        throw error;
+      }
     } catch (error: any) {
       console.error('Signup error details:', {
         status: error.response?.status,
@@ -229,10 +242,7 @@ export const authService = {
         message: error.message
       });
       
-      if (error.response?.data?.detail) {
-        throw new Error(error.response.data.detail);
-      }
-      throw new Error(error.message || 'Signup failed');
+      throw new Error(error.message || 'Signup failed. Please try again.');
     }
   },
 

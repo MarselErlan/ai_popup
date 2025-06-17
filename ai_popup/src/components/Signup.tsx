@@ -17,6 +17,7 @@ const Signup = ({ onSignup, onSwitchToLogin }: SignupProps) => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -29,57 +30,51 @@ const Signup = ({ onSignup, onSwitchToLogin }: SignupProps) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMessage('');
 
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields');
       setLoading(false);
       return;
     }
 
     try {
-      // Step 1: Register the user
-      const signupResponse = await authService.signup({
-        name: formData.name,
+      const response = await authService.signup({
         email: formData.email,
         password: formData.password
       });
       
-      console.log('User registered successfully:', signupResponse);
-
-      // Step 2: Now login with the newly created credentials
-      const { userId, email, sessionId } = await authService.login({
-        email: formData.email,
-        password: formData.password
-      });
+      console.log('User registered successfully:', response);
       
-      // Step 3: Store authentication data
-      localStorage.setItem('session_id', sessionId);
-      localStorage.setItem('user_id', userId);
-      localStorage.setItem('user_email', email);
-      
-      // Step 4: Also store in browser extension storage if available
-      if (typeof window !== 'undefined' && (window as any).chrome?.storage) {
-        try {
-          await (window as any).chrome.storage.local.set({
-            session_id: sessionId,
-            user_id: userId,
-            user_email: email
-          });
-        } catch (e) {
-          console.log('Chrome storage not available:', e);
-        }
+      // Show success message based on response status
+      if (response.status === 'registered') {
+        setSuccessMessage('Registration successful! Redirecting to login...');
+      } else if (response.status === 'reactivated') {
+        setSuccessMessage('Account reactivated! Redirecting to login...');
       }
       
-      onSignup({ userId, email });
+      // Clear form with all required fields
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+      });
+      
+      // Wait a moment before redirecting to login
+      setTimeout(() => {
+        onSwitchToLogin();
+      }, 2000);
+      
     } catch (err: any) {
-      setError(err.message || 'Signup failed. Please try again.');
+      setError(err.message);
+      
+      // If user already exists, offer to switch to login
+      if (err.message.includes('already registered')) {
+        setTimeout(() => {
+          onSwitchToLogin();
+        }, 2000);
+      }
     } finally {
       setLoading(false);
     }
@@ -113,16 +108,44 @@ const Signup = ({ onSignup, onSwitchToLogin }: SignupProps) => {
             color: '#1f2937',
             fontWeight: 'bold'
           }}>
-            AI Form Assistant
+            Create Account
           </h1>
           <p style={{ 
             color: '#6b7280', 
             margin: 0,
             fontSize: '1rem'
           }}>
-            Create your account
+            Sign up for AI Form Assistant
           </p>
         </div>
+
+        {error && (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#dc2626',
+            padding: '0.75rem',
+            borderRadius: '8px',
+            marginBottom: '1.5rem',
+            fontSize: '0.875rem'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div style={{
+            background: '#f0fdf4',
+            border: '1px solid #86efac',
+            color: '#16a34a',
+            padding: '0.75rem',
+            borderRadius: '8px',
+            marginBottom: '1.5rem',
+            fontSize: '0.875rem'
+          }}>
+            {successMessage}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1.5rem' }}>
@@ -306,19 +329,6 @@ const Signup = ({ onSignup, onSwitchToLogin }: SignupProps) => {
               </button>
             </div>
           </div>
-
-          {error && (
-            <div style={{
-              background: '#fee2e2',
-              color: '#dc2626',
-              padding: '0.75rem',
-              borderRadius: '8px',
-              marginBottom: '1.5rem',
-              fontSize: '0.875rem'
-            }}>
-              {error}
-            </div>
-          )}
 
           <button
             type="submit"
