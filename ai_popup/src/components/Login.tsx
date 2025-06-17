@@ -7,22 +7,54 @@ interface LoginProps {
 }
 
 const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await authService.login({ email, password });
+      const response = await authService.login({
+        email: formData.email,
+        password: formData.password
+      });
       
+      // Store authentication data
       localStorage.setItem('token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
+      
+      // Also store in browser extension storage if available
+      if (typeof window !== 'undefined' && (window as any).chrome?.storage) {
+        try {
+          await (window as any).chrome.storage.local.set({
+            token: response.access_token,
+            user: response.user
+          });
+        } catch (e) {
+          console.log('Chrome storage not available:', e);
+        }
+      }
+      
       onLogin(response.user);
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
@@ -70,6 +102,20 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
           </p>
         </div>
 
+        {error && (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#dc2626',
+            padding: '0.75rem',
+            borderRadius: '8px',
+            marginBottom: '1.5rem',
+            fontSize: '0.875rem'
+          }}>
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1.5rem' }}>
             <label 
@@ -85,9 +131,10 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
             </label>
             <input
               id="email"
+              name="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={handleChange}
               required
               style={{
                 width: '100%',
@@ -105,7 +152,7 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
             />
           </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ marginBottom: '2rem' }}>
             <label 
               htmlFor="password" 
               style={{ 
@@ -120,13 +167,15 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
             <div style={{ position: 'relative' }}>
               <input
                 id="password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={handleChange}
                 required
                 style={{
                   width: '100%',
-                  padding: '0.75rem 3rem 0.75rem 0.75rem',
+                  padding: '0.75rem',
+                  paddingRight: '3rem',
                   border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   fontSize: '1rem',
@@ -149,29 +198,14 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  fontSize: '1.2rem',
                   color: '#6b7280',
-                  padding: '0.25rem'
+                  fontSize: '0.875rem'
                 }}
-                title={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? '👁️' : '🙈'}
+                {showPassword ? '🙈' : '👁️'}
               </button>
             </div>
           </div>
-
-          {error && (
-            <div style={{
-              background: '#fee2e2',
-              color: '#dc2626',
-              padding: '0.75rem',
-              borderRadius: '8px',
-              marginBottom: '1.5rem',
-              fontSize: '0.875rem'
-            }}>
-              {error}
-            </div>
-          )}
 
           <button
             type="submit"
@@ -180,11 +214,11 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
               width: '100%',
               background: loading ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
-              padding: '0.75rem',
+              padding: '0.875rem',
               border: 'none',
               borderRadius: '8px',
               fontSize: '1rem',
-              fontWeight: '500',
+              fontWeight: '600',
               cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s',
               marginBottom: '1rem'
@@ -200,49 +234,30 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
               width: '100%',
               background: 'transparent',
               color: '#667eea',
-              padding: '0.75rem',
-              border: '1px solid #667eea',
+              padding: '0.5rem',
+              border: 'none',
               borderRadius: '8px',
-              fontSize: '1rem',
-              fontWeight: '500',
+              fontSize: '0.875rem',
               cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              const target = e.target as HTMLButtonElement;
-              target.style.background = '#667eea';
-              target.style.color = 'white';
-            }}
-            onMouseLeave={(e) => {
-              const target = e.target as HTMLButtonElement;
-              target.style.background = 'transparent';
-              target.style.color = '#667eea';
+              textDecoration: 'underline'
             }}
           >
-            Don't have an account? Sign Up
+            Don't have an account? Sign up
           </button>
         </form>
 
-        <div style={{ 
-          textAlign: 'center', 
+        {/* Demo credentials info */}
+        <div style={{
           marginTop: '2rem',
-          color: '#6b7280',
-          fontSize: '0.875rem'
+          padding: '1rem',
+          background: '#f9fafb',
+          borderRadius: '8px',
+          fontSize: '0.875rem',
+          color: '#6b7280'
         }}>
-          <div style={{ marginBottom: '1rem' }}>
-            <strong>Demo Credentials:</strong>
-          </div>
-          <div style={{ 
-            background: '#f3f4f6', 
-            padding: '1rem', 
-            borderRadius: '8px',
-            marginBottom: '1rem',
-            fontSize: '0.8rem'
-          }}>
-            <div>📧 Email: <code>demo@example.com</code></div>
-            <div>🔑 Password: <code>demo123</code></div>
-          </div>
-          <div>Don't have an account? Contact your administrator</div>
+          <p style={{ margin: '0 0 0.5rem 0', fontWeight: '500' }}>Demo Account:</p>
+          <p style={{ margin: 0 }}>Email: demo@example.com</p>
+          <p style={{ margin: 0 }}>Password: demo123</p>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { authService } from '../services/authService';
+import type { DocumentStatus } from '../services/authService';
 
 interface DashboardProps {
   user: any;
@@ -10,8 +11,12 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   const [resumeLoading, setResumeLoading] = useState(false);
   const [personalInfoLoading, setPersonalInfoLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState({ resume: false, personalInfo: false });
   const [actionStatus, setActionStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
-  const [documentsStatus, setDocumentsStatus] = useState<any>(null);
+  const [documentsStatus, setDocumentsStatus] = useState<DocumentStatus | null>(null);
+  
+  const resumeFileRef = useRef<HTMLInputElement>(null);
+  const personalInfoFileRef = useRef<HTMLInputElement>(null);
 
   // Load documents status on component mount
   useEffect(() => {
@@ -31,6 +36,64 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
       });
     } finally {
       setStatusLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (file: File, type: 'resume' | 'personalInfo') => {
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setActionStatus({
+        type: 'error',
+        message: 'Please upload a PDF, DOC, DOCX, or TXT file'
+      });
+      return;
+    }
+
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      setActionStatus({
+        type: 'error',
+        message: 'File size must be less than 10MB'
+      });
+      return;
+    }
+
+    setUploadLoading(prev => ({ ...prev, [type]: true }));
+    setActionStatus(null);
+
+    try {
+      if (type === 'resume') {
+        await authService.uploadResume(file, user?.id || 'default');
+        setActionStatus({
+          type: 'success',
+          message: 'Resume uploaded successfully!'
+        });
+      } else {
+        await authService.uploadPersonalInfo(file, user?.id || 'default');
+        setActionStatus({
+          type: 'success',
+          message: 'Personal info uploaded successfully!'
+        });
+      }
+      
+      // Reload status after successful upload
+      await loadDocumentsStatus();
+    } catch (error: any) {
+      setActionStatus({
+        type: 'error',
+        message: error.message || `Failed to upload ${type === 'resume' ? 'resume' : 'personal info'}`
+      });
+    } finally {
+      setUploadLoading(prev => ({ ...prev, [type]: false }));
     }
   };
 
@@ -78,6 +141,55 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     }
   };
 
+  const handleDownload = async (type: 'resume' | 'personalInfo') => {
+    try {
+      const blob = type === 'resume' 
+        ? await authService.downloadResume(user?.id || 'default')
+        : await authService.downloadPersonalInfo(user?.id || 'default');
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${type === 'resume' ? 'resume' : 'personal-info'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error: any) {
+      setActionStatus({
+        type: 'error',
+        message: error.message || `Failed to download ${type === 'resume' ? 'resume' : 'personal info'}`
+      });
+    }
+  };
+
+  const handleDelete = async (type: 'resume' | 'personalInfo') => {
+    if (!confirm(`Are you sure you want to delete your ${type === 'resume' ? 'resume' : 'personal info'}?`)) {
+      return;
+    }
+
+    try {
+      if (type === 'resume') {
+        await authService.deleteResume(user?.id || 'default');
+      } else {
+        await authService.deletePersonalInfo(user?.id || 'default');
+      }
+      
+      setActionStatus({
+        type: 'success',
+        message: `${type === 'resume' ? 'Resume' : 'Personal info'} deleted successfully!`
+      });
+      
+      // Reload status after deletion
+      await loadDocumentsStatus();
+    } catch (error: any) {
+      setActionStatus({
+        type: 'error',
+        message: error.message || `Failed to delete ${type === 'resume' ? 'resume' : 'personal info'}`
+      });
+    }
+  };
+
   const downloadExtension = () => {
     // Create a zip file download or redirect to extension files
     const link = document.createElement('a');
@@ -91,105 +203,60 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
       {/* Header */}
       <header style={{
         background: 'white',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        padding: '1rem 2rem'
+        borderBottom: '1px solid #e5e7eb',
+        padding: '1rem 2rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
       }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          maxWidth: '1200px',
-          margin: '0 auto'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <img src="/ai_popup.png" alt="AI Logo" style={{ width: '40px', height: '40px' }} />
-            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#1f2937' }}>AI Form Assistant</h1>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ color: '#6b7280' }}>Welcome, {user?.email || 'User'}</span>
-            <button
-              onClick={onLogout}
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#ef4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '0.875rem'
-              }}
-            >
-              Logout
-            </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <img 
+            src="/ai_popup.png" 
+            alt="AI Logo" 
+            style={{ width: '32px', height: '32px' }} 
+          />
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#1f2937' }}>
+              AI Form Assistant
+            </h1>
+            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+              Welcome back, {user?.email}
+            </p>
           </div>
         </div>
+        
+        <button
+          onClick={onLogout}
+          style={{
+            background: '#f3f4f6',
+            color: '#374151',
+            border: '1px solid #d1d5db',
+            padding: '0.5rem 1rem',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '0.875rem'
+          }}
+        >
+          Logout
+        </button>
       </header>
 
-      {/* Main Content */}
       <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Status Messages */}
+        {/* Status Message */}
         {actionStatus && (
           <div style={{
-            background: actionStatus.type === 'success' ? '#dcfce7' : '#fee2e2',
-            color: actionStatus.type === 'success' ? '#166534' : '#dc2626',
             padding: '1rem',
             borderRadius: '8px',
             marginBottom: '2rem',
-            border: `1px solid ${actionStatus.type === 'success' ? '#bbf7d0' : '#fecaca'}`
+            background: actionStatus.type === 'success' ? '#ecfdf5' : '#fef2f2',
+            border: `1px solid ${actionStatus.type === 'success' ? '#d1fae5' : '#fecaca'}`,
+            color: actionStatus.type === 'success' ? '#065f46' : '#dc2626'
           }}>
             {actionStatus.message}
           </div>
         )}
 
-        {/* Documents Status Section */}
-        <section style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '2rem',
-          marginBottom: '2rem',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ margin: 0, color: '#1f2937', fontSize: '1.5rem' }}>
-              📊 Documents Status
-            </h2>
-            <button
-              onClick={loadDocumentsStatus}
-              disabled={statusLoading}
-              style={{
-                padding: '0.5rem 1rem',
-                background: statusLoading ? '#9ca3af' : '#6b7280',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: statusLoading ? 'not-allowed' : 'pointer',
-                fontSize: '0.875rem'
-              }}
-            >
-              {statusLoading ? 'Loading...' : '🔄 Refresh'}
-            </button>
-          </div>
-          
-          {documentsStatus ? (
-            <div style={{ 
-              background: '#f9fafb', 
-              padding: '1.5rem', 
-              borderRadius: '8px',
-              fontFamily: 'monospace',
-              fontSize: '0.875rem'
-            }}>
-              <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                {JSON.stringify(documentsStatus, null, 2)}
-              </pre>
-            </div>
-          ) : (
-            <div style={{ color: '#6b7280', fontStyle: 'italic' }}>
-              {statusLoading ? 'Loading documents status...' : 'Click refresh to load documents status'}
-            </div>
-          )}
-        </section>
-
-        {/* Extension Setup Section */}
+        {/* Document Status Overview */}
         <section style={{
           background: 'white',
           borderRadius: '12px',
@@ -198,24 +265,269 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
         }}>
           <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
-            🚀 Extension Setup
+            📊 Document Status
           </h2>
           
-          <div style={{ 
-            background: '#f3f4f6', 
-            padding: '1.5rem', 
-            borderRadius: '8px',
-            marginBottom: '1.5rem'
+          {statusLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading status...</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+              <div style={{ 
+                padding: '1rem', 
+                border: '1px solid #e5e7eb', 
+                borderRadius: '8px',
+                background: documentsStatus?.resume_uploaded ? '#f0fdf4' : '#fef2f2'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '1.25rem' }}>📄</span>
+                  <strong>Resume</strong>
+                </div>
+                <p style={{ 
+                  margin: 0,
+                  color: documentsStatus?.resume_uploaded ? '#16a34a' : '#dc2626',
+                  fontWeight: '500'
+                }}>
+                  {documentsStatus?.resume_uploaded ? '✅ Uploaded' : '❌ Not uploaded'}
+                </p>
+              </div>
+              
+              <div style={{ 
+                padding: '1rem', 
+                border: '1px solid #e5e7eb', 
+                borderRadius: '8px',
+                background: documentsStatus?.personal_info_uploaded ? '#f0fdf4' : '#fef2f2'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '1.25rem' }}>👤</span>
+                  <strong>Personal Info</strong>
+                </div>
+                <p style={{ 
+                  margin: 0,
+                  color: documentsStatus?.personal_info_uploaded ? '#16a34a' : '#dc2626',
+                  fontWeight: '500'
+                }}>
+                  {documentsStatus?.personal_info_uploaded ? '✅ Uploaded' : '❌ Not uploaded'}
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* File Upload Section */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+          {/* Resume Upload */}
+          <section style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
           }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>How to Install:</h3>
-            <ol style={{ margin: 0, paddingLeft: '1.5rem', color: '#6b7280' }}>
-              <li style={{ marginBottom: '0.5rem' }}>Download the extension file below</li>
-              <li style={{ marginBottom: '0.5rem' }}>Open Chrome and go to chrome://extensions/</li>
-              <li style={{ marginBottom: '0.5rem' }}>Enable "Developer mode" (top right toggle)</li>
-              <li style={{ marginBottom: '0.5rem' }}>Click "Load unpacked" and select the extracted folder</li>
-              <li style={{ marginBottom: '0.5rem' }}>The AI brain icon will appear next to form fields!</li>
-            </ol>
-          </div>
+            <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
+              📄 Resume Management
+            </h2>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <input
+                ref={resumeFileRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.txt"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file, 'resume');
+                }}
+                style={{ display: 'none' }}
+              />
+              
+              <button
+                onClick={() => resumeFileRef.current?.click()}
+                disabled={uploadLoading.resume}
+                style={{
+                  width: '100%',
+                  background: uploadLoading.resume ? '#9ca3af' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  color: 'white',
+                  padding: '1rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  cursor: uploadLoading.resume ? 'not-allowed' : 'pointer',
+                  marginBottom: '1rem'
+                }}
+              >
+                {uploadLoading.resume ? '⏳ Uploading...' : '📤 Upload Resume'}
+              </button>
+            </div>
+
+            {documentsStatus?.resume_uploaded && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <button
+                  onClick={() => handleDownload('resume')}
+                  style={{
+                    flex: 1,
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    padding: '0.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  📥 Download
+                </button>
+                <button
+                  onClick={() => handleDelete('resume')}
+                  style={{
+                    flex: 1,
+                    background: '#fef2f2',
+                    color: '#dc2626',
+                    border: '1px solid #fecaca',
+                    padding: '0.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  🗑️ Delete
+                </button>
+              </div>
+            )}
+            
+            <button
+              onClick={handleResumeReembed}
+              disabled={resumeLoading || !documentsStatus?.resume_uploaded}
+              style={{
+                width: '100%',
+                background: resumeLoading ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                padding: '1rem',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: '500',
+                cursor: (resumeLoading || !documentsStatus?.resume_uploaded) ? 'not-allowed' : 'pointer',
+                opacity: !documentsStatus?.resume_uploaded ? 0.5 : 1
+              }}
+            >
+              {resumeLoading ? '⏳ Re-embedding...' : '🔄 Re-embed Resume'}
+            </button>
+          </section>
+
+          {/* Personal Info Upload */}
+          <section style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
+              👤 Personal Info Management
+            </h2>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <input
+                ref={personalInfoFileRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.txt"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file, 'personalInfo');
+                }}
+                style={{ display: 'none' }}
+              />
+              
+              <button
+                onClick={() => personalInfoFileRef.current?.click()}
+                disabled={uploadLoading.personalInfo}
+                style={{
+                  width: '100%',
+                  background: uploadLoading.personalInfo ? '#9ca3af' : 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  color: 'white',
+                  padding: '1rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  cursor: uploadLoading.personalInfo ? 'not-allowed' : 'pointer',
+                  marginBottom: '1rem'
+                }}
+              >
+                {uploadLoading.personalInfo ? '⏳ Uploading...' : '📤 Upload Personal Info'}
+              </button>
+            </div>
+
+            {documentsStatus?.personal_info_uploaded && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <button
+                  onClick={() => handleDownload('personalInfo')}
+                  style={{
+                    flex: 1,
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    padding: '0.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  📥 Download
+                </button>
+                <button
+                  onClick={() => handleDelete('personalInfo')}
+                  style={{
+                    flex: 1,
+                    background: '#fef2f2',
+                    color: '#dc2626',
+                    border: '1px solid #fecaca',
+                    padding: '0.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  🗑️ Delete
+                </button>
+              </div>
+            )}
+            
+            <button
+              onClick={handlePersonalInfoReembed}
+              disabled={personalInfoLoading || !documentsStatus?.personal_info_uploaded}
+              style={{
+                width: '100%',
+                background: personalInfoLoading ? '#9ca3af' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                color: 'white',
+                padding: '1rem',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: '500',
+                cursor: (personalInfoLoading || !documentsStatus?.personal_info_uploaded) ? 'not-allowed' : 'pointer',
+                opacity: !documentsStatus?.personal_info_uploaded ? 0.5 : 1
+              }}
+            >
+              {personalInfoLoading ? '⏳ Re-embedding...' : '🔄 Re-embed Personal Info'}
+            </button>
+          </section>
+        </div>
+
+        {/* Extension Download Section */}
+        <section style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '2rem',
+          marginBottom: '2rem',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <h2 style={{ margin: '0 0 1rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
+            🚀 Browser Extension
+          </h2>
+          
+          <p style={{ color: '#6b7280', marginBottom: '2rem', maxWidth: '600px', margin: '0 auto 2rem auto' }}>
+            Download and install the browser extension to start using AI-powered form filling on any website.
+          </p>
 
           <button
             onClick={downloadExtension}
@@ -228,7 +540,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
               fontSize: '1.1rem',
               fontWeight: '500',
               cursor: 'pointer',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               gap: '0.5rem'
             }}
@@ -237,99 +549,11 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
           </button>
         </section>
 
-        {/* Vector Database Management Section */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-          {/* Resume Re-embed */}
-          <section style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '2rem',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-          }}>
-            <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
-              📄 Resume Vector Database
-            </h2>
-            
-            <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-              Re-embed your resume data from the database to update the AI's knowledge base.
-            </p>
-            
-            <button
-              onClick={handleResumeReembed}
-              disabled={resumeLoading}
-              style={{
-                width: '100%',
-                background: resumeLoading ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                color: 'white',
-                padding: '1rem',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: '500',
-                cursor: resumeLoading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              {resumeLoading ? (
-                <>⏳ Re-embedding Resume...</>
-              ) : (
-                <>🔄 Re-embed Resume</>
-              )}
-            </button>
-          </section>
-
-          {/* Personal Info Re-embed */}
-          <section style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '2rem',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-          }}>
-            <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
-              👤 Personal Info Vector Database
-            </h2>
-            
-            <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-              Re-embed your personal information from the database to update the AI's knowledge base.
-            </p>
-            
-            <button
-              onClick={handlePersonalInfoReembed}
-              disabled={personalInfoLoading}
-              style={{
-                width: '100%',
-                background: personalInfoLoading ? '#9ca3af' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                color: 'white',
-                padding: '1rem',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: '500',
-                cursor: personalInfoLoading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              {personalInfoLoading ? (
-                <>⏳ Re-embedding Personal Info...</>
-              ) : (
-                <>🔄 Re-embed Personal Info</>
-              )}
-            </button>
-          </section>
-        </div>
-
         {/* Usage Instructions */}
         <section style={{
           background: 'white',
           borderRadius: '12px',
           padding: '2rem',
-          marginTop: '2rem',
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
         }}>
           <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
@@ -338,26 +562,26 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
             <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📤</div>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Upload Documents</h3>
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                Upload your resume and personal information to train the AI
+              </p>
+            </div>
+            
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔧</div>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Install Extension</h3>
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                Download and install the browser extension in Chrome or Firefox
+              </p>
+            </div>
+            
+            <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🧠</div>
-              <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>AI-Powered</h3>
+              <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>AI-Powered Filling</h3>
               <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-                Uses your resume and personal info to intelligently fill form fields
-              </p>
-            </div>
-            
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⚡</div>
-              <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Fast & Accurate</h3>
-              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-                Vector database ensures quick and contextually relevant answers
-              </p>
-            </div>
-            
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔒</div>
-              <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Secure</h3>
-              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-                Your data stays in your database and is processed locally
+                Click form fields and let AI fill them with your information
               </p>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { authService } from './services/authService';
 
 const AI_ICON_URL = '/ai_popup.png';
 
@@ -45,6 +46,20 @@ export default function PopupInjector() {
 
       console.log("✅ Current input found:", currentInput);
       
+      // Check if user is authenticated
+      if (!authService.isAuthenticated()) {
+        currentInput.value = "⚠️ Please login first";
+        console.log("❌ User not authenticated");
+        return;
+      }
+
+      const user = authService.getCurrentUser();
+      if (!user) {
+        currentInput.value = "⚠️ User information not found";
+        console.log("❌ User information not found");
+        return;
+      }
+      
       // Show loading state
       currentInput.value = "🧠 AI is thinking...";
       currentInput.disabled = true;
@@ -53,28 +68,14 @@ export default function PopupInjector() {
         const fieldLabel = getFieldLabel(currentInput);
         const pageUrl = window.location.href;
 
-        const requestData = {
-          label: fieldLabel,
-          url: pageUrl,
-          user_id: "default", // or dynamic user ID later
-        };
-
         console.log("🧠 Detected field:", fieldLabel);
-        console.log("📤 SENDING TO BACKEND:", requestData);
         console.log("📤 Question being sent:", `"${fieldLabel}"`);
         console.log("📤 URL:", pageUrl);
+        console.log("👤 User ID:", user.id);
 
-        const response = await fetch("http://127.0.0.1:8000/api/generate-field-answer", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestData),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
+        // Use the authService method which handles authentication automatically
+        const data = await authService.generateFieldAnswer(fieldLabel, pageUrl, user.id);
+        
         currentInput.value = data.answer || "⚠️ No answer returned";
         
         console.log("✅ AI Response received:", data);
@@ -82,9 +83,23 @@ export default function PopupInjector() {
         console.log("💡 Answer provided:", `"${data.answer}"`);
         console.log("📊 Data source:", data.data_source);
         console.log("🤔 AI reasoning:", data.reasoning);
-      } catch (err) {
+        
+      } catch (err: any) {
         console.error("🚨 Backend call failed:", err);
-        currentInput.value = "⚠️ Error getting answer";
+        
+        // Handle specific error cases
+        if (err.message?.includes('401') || err.message?.includes('Unauthorized')) {
+          currentInput.value = "⚠️ Authentication expired - please login";
+        } else if (err.message?.includes('403') || err.message?.includes('Forbidden')) {
+          currentInput.value = "⚠️ Access denied - check permissions";
+        } else if (err.message?.includes('404')) {
+          currentInput.value = "⚠️ API endpoint not found";
+        } else if (err.message?.includes('500')) {
+          currentInput.value = "⚠️ Server error - try again later";
+        } else {
+          currentInput.value = "⚠️ Error getting answer";
+        }
+        
       } finally {
         currentInput.disabled = false;
         aiButton.style.display = 'none';

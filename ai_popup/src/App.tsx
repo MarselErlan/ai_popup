@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
+import PopupInjector from './PopupInjector';
 import './App.css';
 
 function App() {
@@ -29,16 +30,29 @@ function App() {
 
   const handleLogin = (userData: any) => {
     setUser(userData);
+    setShowSignup(false); // Reset to login view
   };
 
   const handleSignup = (userData: any) => {
     setUser(userData);
+    setShowSignup(false); // Reset to login view
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    
+    // Also clear browser extension storage if available
+    if (typeof window !== 'undefined' && (window as any).chrome?.storage) {
+      try {
+        (window as any).chrome.storage.local.remove(['token', 'user']);
+      } catch (e) {
+        console.log('Chrome storage not available:', e);
+      }
+    }
+    
     setUser(null);
+    setShowSignup(false);
   };
 
   const switchToSignup = () => {
@@ -70,16 +84,29 @@ function App() {
     );
   }
 
-  return (
-    <div className="App">
-      {user ? (
+  if (user) {
+    return (
+      <>
         <Dashboard user={user} onLogout={handleLogout} />
-      ) : showSignup ? (
-        <Signup onSignup={handleSignup} onSwitchToLogin={switchToLogin} />
-      ) : (
-        <Login onLogin={handleLogin} onSwitchToSignup={switchToSignup} />
-      )}
-    </div>
+        <PopupInjector />
+      </>
+    );
+  }
+
+  if (showSignup) {
+    return (
+      <Signup 
+        onSignup={handleSignup} 
+        onSwitchToLogin={switchToLogin} 
+      />
+    );
+  }
+
+  return (
+    <Login 
+      onLogin={handleLogin} 
+      onSwitchToSignup={switchToSignup} 
+    />
   );
 }
 
