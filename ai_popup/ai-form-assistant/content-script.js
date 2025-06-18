@@ -302,18 +302,26 @@
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       window.postMessage({
         type: 'AI_EXTENSION_LOADED',
-        source: 'ai-form-assistant'
+        source: 'ai-form-assistant',
+        timestamp: Date.now()
       }, '*');
       
       // Also set a global variable that the web app can check
       window.aiFormAssistantExtension = {
         version: '2.0.0',
         loaded: true,
+        timestamp: Date.now(),
         checkAuth: async () => {
           const result = await chrome.storage.local.get(['sessionId', 'userId']);
           return !!(result.sessionId && result.userId);
         }
       };
+      
+      // Set a marker in storage so we can identify our extension
+      chrome.storage.local.set({
+        extensionId: 'ai-form-assistant',
+        lastActivity: Date.now()
+      });
     }
   };
 

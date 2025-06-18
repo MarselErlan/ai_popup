@@ -29,6 +29,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   const [extensionInstalled, setExtensionInstalled] = useState<boolean>(false);
   const [extensionLoggedIn, setExtensionLoggedIn] = useState<boolean>(false);
   const [extensionLoginLoading, setExtensionLoginLoading] = useState<boolean>(false);
+  const [extensionDetectedOnce, setExtensionDetectedOnce] = useState<boolean>(false);
   
   const resumeFileRef = useRef<HTMLInputElement>(null);
   const personalInfoFileRef = useRef<HTMLInputElement>(null);
@@ -36,21 +37,35 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   // Load documents status and check extension on component mount
   useEffect(() => {
     loadDocumentsStatus();
-    checkExtensionStatus();
+    
+    // Initial check - but don't be too eager
+    setTimeout(checkExtensionStatus, 1000);
     
     // Listen for extension messages
     const handleExtensionMessage = (event: MessageEvent) => {
       if (event.data?.type === 'AI_EXTENSION_LOADED' && event.data?.source === 'ai-form-assistant') {
-        console.log('🎉 Extension detected via message!');
-        setExtensionInstalled(true);
+        console.log('🎉 Extension detected via message!', event.data);
+        if (!extensionInstalled) {
+          setExtensionInstalled(true);
+          setExtensionDetectedOnce(true);
+          console.log('📱 Extension status updated via message');
+        }
         checkExtensionAuthStatus();
       }
     };
     
     window.addEventListener('message', handleExtensionMessage);
     
-    // Check periodically for extension
-    const intervalId = setInterval(checkExtensionStatus, 3000);
+    // Check periodically for extension (but less frequently to avoid flickering)
+    const intervalId = setInterval(() => {
+      // Only check if we haven't detected the extension yet
+      if (!extensionInstalled) {
+        checkExtensionStatus();
+      } else {
+        // If extension is detected, just check auth status periodically
+        checkExtensionAuthStatus();
+      }
+    }, 10000); // Reduced frequency to 10 seconds
     
     return () => {
       window.removeEventListener('message', handleExtensionMessage);
@@ -243,7 +258,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
       
       setActionStatus({
         type: 'success',
-        message: '🎉 Extension downloaded successfully! Extract the zip file and load it in Chrome/Edge: chrome://extensions/ → Enable Developer Mode → Load Unpacked'
+        message: '📥 Extension downloaded! Now extract the zip file and install it in Chrome: chrome://extensions/ → Enable Developer Mode → Load Unpacked. The status above will change to "Installed" after loading.'
       });
     } catch (error) {
       console.error('Extension download failed:', error);
@@ -254,30 +269,30 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     }
   };
 
-  const checkExtensionStatus = () => {
-    // Method 1: Check for our global variable (most reliable)
+    const checkExtensionStatus = () => {
+    // Method 1: Check for our specific global variable (ONLY reliable method)
     if ((window as any).aiFormAssistantExtension?.loaded) {
       console.log('✅ Extension detected via global variable');
-      setExtensionInstalled(true);
+      if (!extensionInstalled) {
+        setExtensionInstalled(true);
+        setExtensionDetectedOnce(true);
+        console.log('🎉 Extension status set to installed');
+      }
       checkExtensionAuthStatus();
       return;
     }
     
-    // Method 2: Check for chrome.runtime (less reliable)
-    if (typeof window !== 'undefined' && (window as any).chrome?.runtime) {
-      console.log('⚠️ Chrome runtime detected, but extension global not set');
+    // If we've detected it before but global variable is gone, keep it as installed
+    // (extension might be temporarily reloading)
+    if (extensionDetectedOnce && !extensionInstalled) {
+      console.log('🔄 Extension was detected before, keeping as installed');
       setExtensionInstalled(true);
-      
-      // Try to check auth via chrome.storage
-      try {
-        (window as any).chrome.storage.local.get(['sessionId', 'userId'], (result: any) => {
-          setExtensionLoggedIn(!!(result.sessionId && result.userId));
-        });
-      } catch (error) {
-        console.log('Extension storage not accessible');
-        setExtensionLoggedIn(false);
-      }
-    } else {
+      return;
+    }
+    
+    // If no global variable and haven't detected before, mark as not installed
+    if (!extensionDetectedOnce) {
+      console.log('❌ Extension not detected - waiting for installation');
       setExtensionInstalled(false);
       setExtensionLoggedIn(false);
     }
@@ -318,8 +333,8 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
         throw new Error('No active web app session found');
       }
 
-      // Store session data in extension storage
-      if ((window as any).chrome?.storage) {
+      // Store session data in extension storage - only if extension is properly detected
+      if ((window as any).aiFormAssistantExtension?.loaded && (window as any).chrome?.storage) {
         await new Promise<void>((resolve, reject) => {
           (window as any).chrome.storage.local.set({
             sessionId: sessionId,
@@ -341,9 +356,9 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
         });
         
         // Recheck extension status to update UI
-        setTimeout(checkExtensionStatus, 1000);
+        setTimeout(checkExtensionAuthStatus, 1000);
       } else {
-        throw new Error('Extension not installed or not accessible');
+        throw new Error('Extension not properly installed or not accessible. Please make sure the extension is loaded and refresh this page.');
       }
 
     } catch (error: any) {
@@ -732,24 +747,29 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
             {/* Extension Status */}
-            <div style={{ 
-              padding: '1rem', 
-              border: '1px solid #e5e7eb', 
-              borderRadius: '8px',
-              background: extensionInstalled ? '#f0fdf4' : '#fef2f2'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '1.25rem' }}>🔧</span>
-                <strong>Extension Status</strong>
-              </div>
-              <p style={{ 
-                margin: 0,
-                color: extensionInstalled ? '#16a34a' : '#dc2626',
-                fontWeight: '500'
-              }}>
-                {extensionInstalled ? '✅ Installed' : '❌ Not installed'}
-              </p>
-            </div>
+                         <div style={{ 
+               padding: '1rem', 
+               border: '1px solid #e5e7eb', 
+               borderRadius: '8px',
+               background: extensionInstalled ? '#f0fdf4' : '#fef2f2'
+             }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                 <span style={{ fontSize: '1.25rem' }}>🔧</span>
+                 <strong>Extension Status</strong>
+               </div>
+               <p style={{ 
+                 margin: 0,
+                 color: extensionInstalled ? '#16a34a' : '#dc2626',
+                 fontWeight: '500'
+               }}>
+                 {extensionInstalled ? '✅ Installed' : '❌ Not installed'}
+                 {extensionDetectedOnce && extensionInstalled && (
+                   <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                     (Stable)
+                   </span>
+                 )}
+               </p>
+             </div>
             
             {/* Login Status */}
             <div style={{ 
