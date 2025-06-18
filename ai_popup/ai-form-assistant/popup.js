@@ -13,18 +13,29 @@ class PopupManager {
     try {
       const sessionId = await this.getStoredSessionId();
       
-      if (!sessionId) return;
+      if (!sessionId) {
+        console.log('⚠️ No session ID found, skipping document status check');
+        return;
+      }
+
+      console.log('📄 Checking document status with session:', sessionId);
 
       const response = await fetch(`${this.API_BASE_URL}/api/v1/documents/status`, {
-        headers: { 'Authorization': `Session ${sessionId}` }
+        headers: { 
+          'Authorization': sessionId,  // API expects just the session ID
+          'Content-Type': 'application/json'
+        }
       });
+
+      console.log('📄 Document status response:', response.status);
 
       if (response.ok) {
         const status = await response.json();
+        console.log('📄 Document status data:', status);
         
         // Update resume status
         const resumeStatus = document.getElementById('resumeStatus');
-        if (status.data.resume && status.data.resume.filename) {
+        if (status.data && status.data.resume && status.data.resume.filename) {
           resumeStatus.textContent = 'Ready';
           resumeStatus.className = 'status-value status-ready';
         } else {
@@ -34,7 +45,7 @@ class PopupManager {
         
         // Update personal info status
         const personalInfoStatus = document.getElementById('personalInfoStatus');
-        if (status.data.personal_info && status.data.personal_info.filename) {
+        if (status.data && status.data.personal_info && status.data.personal_info.filename) {
           personalInfoStatus.textContent = 'Ready';
           personalInfoStatus.className = 'status-value status-ready';
         } else {
@@ -42,12 +53,15 @@ class PopupManager {
           personalInfoStatus.className = 'status-value status-missing';
         }
       } else {
+        const errorText = await response.text();
+        console.error('❌ Document status API error:', response.status, errorText);
+        
         // Set default status if API call fails
         document.getElementById('resumeStatus').textContent = 'Unknown';
         document.getElementById('personalInfoStatus').textContent = 'Unknown';
       }
     } catch (error) {
-      console.error('Error checking document status:', error);
+      console.error('❌ Error checking document status:', error);
       document.getElementById('resumeStatus').textContent = 'Error';
       document.getElementById('personalInfoStatus').textContent = 'Error';
     }
@@ -202,6 +216,46 @@ class PopupManager {
     }
   }
 
+  async testSession() {
+    try {
+      console.log('🧪 Testing current session...');
+      
+      // Get stored session data
+      const result = await chrome.storage.local.get(['sessionId', 'userId', 'email']);
+      console.log('🔍 Stored session data:', result);
+      
+      if (!result.sessionId) {
+        console.error('❌ No session ID found in storage');
+        this.showError('No session found. Please login again.');
+        return;
+      }
+      
+      // Test session validation
+      const response = await fetch(`${this.API_BASE_URL}/api/session/current/${result.sessionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('🧪 Session validation response:', response.status);
+      
+      if (response.ok) {
+        const sessionData = await response.json();
+        console.log('✅ Session is valid:', sessionData);
+        this.showError('✅ Session is valid and working!', 'successMessage');
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Session validation failed:', response.status, errorText);
+        this.showError(`Session validation failed: ${response.status}`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Session test error:', error);
+      this.showError(`Session test failed: ${error.message}`);
+    }
+  }
+
   async clearStoredData() {
     return new Promise((resolve) => {
       chrome.storage.local.remove(['sessionId', 'userId', 'email'], () => {
@@ -241,6 +295,14 @@ class PopupManager {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         await this.handleLogin(email, password);
+      });
+    }
+
+    // Test session button
+    const testSessionBtn = document.getElementById('testSessionBtn');
+    if (testSessionBtn) {
+      testSessionBtn.addEventListener('click', async () => {
+        await this.testSession();
       });
     }
 
@@ -409,12 +471,12 @@ class PopupManager {
   }
 
   showError(message, elementId = 'errorMessage') {
-    const errorDiv = document.getElementById(elementId);
-    if (errorDiv) {
-      errorDiv.textContent = message;
-      errorDiv.classList.remove('hidden');
+    const messageDiv = document.getElementById(elementId);
+    if (messageDiv) {
+      messageDiv.textContent = message;
+      messageDiv.classList.remove('hidden');
       setTimeout(() => {
-        errorDiv.classList.add('hidden');
+        messageDiv.classList.add('hidden');
       }, 5000);
     }
   }

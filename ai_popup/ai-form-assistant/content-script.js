@@ -392,6 +392,26 @@
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'authenticationUpdated') {
       console.log("🔐 Authentication updated notification received");
+      
+      // Immediately update the global variable with current auth status
+      updateGlobalAuthStatus();
+      
+      // Notify the page about auth change
+      window.postMessage({
+        type: 'EXTENSION_AUTH_UPDATED',
+        source: 'ai-form-assistant',
+        timestamp: Date.now()
+      }, '*');
+      
+      // Also dispatch custom event
+      document.dispatchEvent(new CustomEvent('aiExtensionAuthUpdated', {
+        detail: {
+          type: 'EXTENSION_AUTH_UPDATED',
+          source: 'ai-form-assistant',
+          timestamp: Date.now()
+        },
+        bubbles: true
+      }));
     }
   });
 
@@ -548,32 +568,66 @@
     }
   };
 
-  // Notify on load and set up periodic refresh of global variable only
-  notifyExtensionLoaded();
-  
-  // Refresh global variable every 10 seconds (no messages, no storage calls)
-  setInterval(() => {
+  // Function to update global auth status
+  async function updateGlobalAuthStatus() {
     const isDevelopment = window.location.hostname === 'localhost' || 
                          window.location.hostname === '127.0.0.1' ||
                          window.location.port === '5173' ||
                          window.location.port === '3000';
                          
     if (isDevelopment) {
-      window.aiFormAssistantExtension = {
-        version: '2.0.0',
-        loaded: true,
-        timestamp: Date.now(),
-        checkAuth: async () => {
-          try {
-            const result = await chrome.storage.local.get(['sessionId', 'userId']);
-            return !!(result.sessionId && result.userId);
-          } catch (error) {
-            console.warn('Auth check failed:', error);
-            return false;
+      try {
+        const result = await chrome.storage.local.get(['sessionId', 'userId', 'email']);
+        const isLoggedIn = !!(result.sessionId && result.userId);
+        
+        console.log('🔄 Updating global auth status:', { isLoggedIn, sessionId: result.sessionId?.substring(0, 8) + '...' });
+        
+        window.aiFormAssistantExtension = {
+          version: '2.0.0',
+          loaded: true,
+          timestamp: Date.now(),
+          isLoggedIn: isLoggedIn,
+          sessionId: result.sessionId,
+          userId: result.userId,
+          email: result.email,
+          checkAuth: async () => {
+            try {
+              const freshResult = await chrome.storage.local.get(['sessionId', 'userId']);
+              return !!(freshResult.sessionId && freshResult.userId);
+            } catch (error) {
+              console.warn('Auth check failed:', error);
+              return false;
+            }
           }
+        };
+        
+        // Also set DOM attributes for backup detection
+        document.documentElement.setAttribute('data-ai-extension-logged-in', isLoggedIn.toString());
+        if (isLoggedIn) {
+          document.documentElement.setAttribute('data-ai-extension-user-id', result.userId || '');
+          document.documentElement.setAttribute('data-ai-extension-email', result.email || '');
         }
-      };
+        
+      } catch (error) {
+        console.warn('Error updating global auth status:', error);
+        window.aiFormAssistantExtension = {
+          version: '2.0.0',
+          loaded: true,
+          timestamp: Date.now(),
+          isLoggedIn: false,
+          checkAuth: async () => false
+        };
+      }
     }
+  }
+
+  // Notify on load and set up periodic refresh
+  notifyExtensionLoaded();
+  updateGlobalAuthStatus(); // Initial auth status
+  
+  // Refresh global variable and auth status every 10 seconds
+  setInterval(() => {
+    updateGlobalAuthStatus();
   }, 10000);
 
   console.log("🎯 AI Form Assistant content script loaded and ready");
