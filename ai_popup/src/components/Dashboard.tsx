@@ -207,11 +207,11 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   };
 
   const downloadExtension = () => {
-    // Create a zip file download or redirect to extension files
-    const link = document.createElement('a');
-    link.href = '/ai-popup-extension.zip'; // You'll need to create this zip file
-    link.download = 'ai-popup-extension.zip';
-    link.click();
+    // Create a zip of the extension folder on the fly
+    setActionStatus({
+      type: 'success',
+      message: 'Extension folder is ready at ai_popup/ai-form-assistant/. Load it manually in Chrome/Edge by going to chrome://extensions/, enabling Developer mode, and clicking "Load unpacked".'
+    });
   };
 
   const checkExtensionStatus = () => {

@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "AI Form Assistant",
+  "version": "2.0.0",
+  "description": "AI-powered form filling assistant with authentication and document management",
+  
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  
+  "host_permissions": [
+    "*://*/*"
+  ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_end"
+    }
+  ],
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AI Form Assistant"
+  },
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["ai_popup.png"],
+      "matches": ["*://*/*"]
+    }
+  ],
+  
+  "icons": {
+    "16": "ai_popup.png",
+    "32": "ai_popup.png", 
+    "48": "ai_popup.png",
+    "128": "ai_popup.png"
+  }
+} 

@@ -78,12 +78,22 @@ The system uses:
 
 ## 🔧 Browser Extension
 
-You can also use this as a browser extension:
+The unified browser extension is located in the `ai-form-assistant/` directory. See the [Extension README](ai-form-assistant/README.md) for full documentation.
 
-1. Open Chrome and go to `chrome://extensions/`
+**Installation:**
+
+1. Open Chrome/Edge and go to `chrome://extensions/`
 2. Enable "Developer mode"
-3. Click "Load unpacked" and select the `ai-popup-extension` folder
-4. The extension will work on any website!
+3. Click "Load unpacked" and select the `ai-form-assistant` folder
+4. Login through the web app dashboard using "Login to Extension"
+
+**Key Features:**
+
+- 🧠 AI-powered form filling using your uploaded documents
+- 🔐 Seamless authentication sync with web app
+- 🎯 Advanced field detection and labeling
+- 💫 Modern UI with real-time status indicators
+- 🔄 One-click login from dashboard
 
 ## 📡 API Endpoints
 
@@ -135,10 +145,18 @@ ai_popup/
 ├── src/
 │   ├── App.tsx              # Main React app
 │   ├── PopupInjector.tsx    # AI popup logic
-│   └── ...
-├── ai-popup-extension/      # Browser extension
-│   ├── manifest.json
-│   └── content.js
+│   ├── components/          # React components
+│   │   ├── Dashboard.tsx    # Main dashboard with extension login
+│   │   ├── Login.tsx        # Authentication forms
+│   │   └── Signup.tsx
+│   └── services/            # API services
+├── ai-form-assistant/       # Unified browser extension
+│   ├── manifest.json        # Extension configuration
+│   ├── popup.html           # Extension popup interface
+│   ├── popup.js             # Authentication & user management
+│   ├── content-script.js    # AI form filling logic
+│   ├── background.js        # Extension background service
+│   └── README.md            # Extension documentation
 └── package.json
 
 ../backend_ai_popup/
