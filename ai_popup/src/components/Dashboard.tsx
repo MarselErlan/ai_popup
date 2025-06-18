@@ -206,12 +206,33 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     }
   };
 
-  const downloadExtension = () => {
-    // Create a zip of the extension folder on the fly
-    setActionStatus({
-      type: 'success',
-      message: 'Extension folder is ready at ai_popup/ai-form-assistant/. Load it manually in Chrome/Edge by going to chrome://extensions/, enabling Developer mode, and clicking "Load unpacked".'
-    });
+  const downloadExtension = async () => {
+    try {
+      // Check if the zip file exists
+      const response = await fetch('/ai-form-assistant.zip', { method: 'HEAD' });
+      
+      if (!response.ok) {
+        throw new Error('Extension zip file not found');
+      }
+      
+      const link = document.createElement('a');
+      link.href = '/ai-form-assistant.zip';
+      link.download = 'ai-form-assistant.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setActionStatus({
+        type: 'success',
+        message: '🎉 Extension downloaded successfully! Extract the zip file and load it in Chrome/Edge: chrome://extensions/ → Enable Developer Mode → Load Unpacked'
+      });
+    } catch (error) {
+      console.error('Extension download failed:', error);
+      setActionStatus({
+        type: 'error',
+        message: '❌ Download failed. Try refreshing the page or contact support. You can also manually load the extension from the ai_popup/ai-form-assistant/ folder.'
+      });
+    }
   };
 
   const checkExtensionStatus = () => {
@@ -784,10 +805,32 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
             </button>
           </div>
           
-          <p style={{ color: '#6b7280', marginTop: '1rem', fontSize: '0.875rem' }}>
-            The browser extension enables AI form filling on any website. Once installed and logged in, 
-            you can click on form fields and use the AI button to automatically fill them.
-          </p>
+                     <p style={{ color: '#6b7280', marginTop: '1rem', fontSize: '0.875rem' }}>
+             The browser extension enables AI form filling on any website. Once installed and logged in, 
+             you can click on form fields and use the AI button to automatically fill them.
+           </p>
+           
+           {/* Installation Instructions */}
+           <div style={{ 
+             marginTop: '1rem', 
+             padding: '1rem', 
+             background: '#f8fafc', 
+             borderRadius: '8px',
+             fontSize: '0.875rem'
+           }}>
+             <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151', fontSize: '0.875rem' }}>
+               📋 Installation Steps:
+             </h4>
+             <ol style={{ margin: 0, paddingLeft: '1.25rem', color: '#6b7280' }}>
+               <li>Download the extension zip file above</li>
+               <li>Extract/unzip the downloaded file to a folder</li>
+               <li>Open Chrome/Edge and go to <code style={{background: '#e5e7eb', padding: '0.125rem 0.25rem', borderRadius: '4px'}}>chrome://extensions/</code></li>
+               <li>Enable "Developer mode" (toggle in top right)</li>
+               <li>Click "Load unpacked" and select the extracted folder</li>
+               <li>Extension icon should appear in your browser toolbar</li>
+               <li>Click "Login to Extension" button above to sync your account</li>
+             </ol>
+           </div>
         </section>
 
         {/* Usage Instructions */}
