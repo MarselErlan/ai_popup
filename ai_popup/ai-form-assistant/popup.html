@@ -262,8 +262,36 @@
       <div class="subtitle">Smart Form Filling</div>
     </div>
 
+    <!-- Web App Login Detected View -->
+    <div id="webAppLoginView" class="card hidden">
+      <div class="success-message">
+        ✅ <strong>Web App Login Detected!</strong><br>
+        We found you're already logged in to the web app.
+      </div>
+      
+      <div class="user-info" style="background: #f0fdf4; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <div class="user-details">
+          <div style="font-weight: 600; color: #166534;">Detected Account:</div>
+          <div id="detectedEmail" style="font-size: 14px; color: #166534;"></div>
+          <div id="detectedUserId" style="font-size: 12px; color: #15803d; margin-top: 4px;"></div>
+        </div>
+      </div>
+      
+      <button id="syncLoginBtn" class="btn btn-primary" style="margin-bottom: 10px;">
+        🔄 Sync with Extension
+      </button>
+      
+      <button id="manualLoginBtn" class="btn btn-secondary">
+        🔐 Manual Login Instead
+      </button>
+      
+      <div style="font-size: 12px; color: #6b7280; text-align: center; margin-top: 15px;">
+        Syncing will automatically log you into the extension using your web app session.
+      </div>
+    </div>
+
     <!-- Login View -->
-    <div id="loginView" class="card">
+    <div id="loginView" class="card hidden">
       <div id="errorMessage" class="error-message hidden"></div>
       
       <form id="loginForm">

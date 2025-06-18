@@ -75,6 +75,76 @@ class PopupManager {
     });
   }
 
+  async checkWebAppLogin() {
+    try {
+      console.log('🔍 Checking for web app login...');
+      
+      // Query active tabs to check if web app is open and user is logged in
+      const tabs = await chrome.tabs.query({});
+      
+      for (const tab of tabs) {
+        // Check if tab is localhost:5173 (web app)
+        if (tab.url && (tab.url.includes('localhost:5173') || tab.url.includes('127.0.0.1:5173'))) {
+          console.log('🔍 Found web app tab:', tab.url);
+          
+          try {
+            // Send message to content script to check login status
+            const response = await chrome.tabs.sendMessage(tab.id, {
+              action: 'checkWebAppLogin'
+            });
+            
+            if (response && response.isLoggedIn) {
+              console.log('✅ Web app login confirmed:', response);
+              return {
+                email: response.email,
+                userId: response.userId,
+                sessionId: response.sessionId,
+                tabId: tab.id
+              };
+            }
+          } catch (error) {
+            console.log('⚠️ Could not check login on tab:', tab.id, error.message);
+          }
+        }
+      }
+      
+      console.log('❌ No web app login found');
+      return null;
+    } catch (error) {
+      console.error('❌ Error checking web app login:', error);
+      return null;
+    }
+  }
+
+  async syncWithWebApp(webAppSession) {
+    try {
+      console.log('🔄 Syncing with web app session:', webAppSession);
+      
+      // Store the session data in extension storage
+      const storageData = {
+        sessionId: webAppSession.sessionId,
+        userId: webAppSession.userId,
+        email: webAppSession.email
+      };
+      
+      return new Promise((resolve, reject) => {
+        chrome.storage.local.set(storageData, () => {
+          if (chrome.runtime.lastError) {
+            console.error('❌ Storage error:', chrome.runtime.lastError);
+            reject(new Error('Failed to store session data'));
+            return;
+          }
+          
+          console.log('✅ Web app session synced to extension');
+          resolve(storageData);
+        });
+      });
+    } catch (error) {
+      console.error('❌ Sync error:', error);
+      throw error;
+    }
+  }
+
 
 
   async signup(email, password) {
@@ -266,15 +336,25 @@ class PopupManager {
   }
 
   async initializeUI() {
-    // Check if user is already logged in
+    // Check if user is already logged in to extension
     try {
       const sessionId = await this.getStoredSessionId();
       
       if (sessionId) {
-        console.log('🔍 Found existing session:', sessionId);
+        console.log('🔍 Found existing extension session:', sessionId);
         this.showDashboard();
+        return;
+      }
+      
+      console.log('🔍 No extension session found, checking web app login...');
+      
+      // Check if user is logged in to web app
+      const webAppSession = await this.checkWebAppLogin();
+      if (webAppSession) {
+        console.log('✅ Web app login detected:', webAppSession);
+        this.showWebAppLoginDetected(webAppSession);
       } else {
-        console.log('🔍 No existing session found');
+        console.log('🔍 No web app login found, showing manual login');
         this.showLogin();
       }
     } catch (error) {
@@ -339,6 +419,22 @@ class PopupManager {
         const password = document.getElementById('signupPassword').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
         await this.handleSignup(email, password, confirmPassword);
+      });
+    }
+
+    // Sync login button
+    const syncLoginBtn = document.getElementById('syncLoginBtn');
+    if (syncLoginBtn) {
+      syncLoginBtn.addEventListener('click', async () => {
+        await this.handleSyncLogin();
+      });
+    }
+
+    // Manual login button (from web app detected view)
+    const manualLoginBtn = document.getElementById('manualLoginBtn');
+    if (manualLoginBtn) {
+      manualLoginBtn.addEventListener('click', () => {
+        this.showLogin();
       });
     }
   }
@@ -410,6 +506,34 @@ class PopupManager {
     }
   }
 
+  async handleSyncLogin() {
+    const syncBtn = document.getElementById('syncLoginBtn');
+    const originalText = syncBtn.textContent;
+    
+    try {
+      console.log('🔄 Starting sync login process...');
+      syncBtn.innerHTML = '<div class="loading"></div> Syncing...';
+      syncBtn.disabled = true;
+
+      if (!this.pendingWebAppSession) {
+        throw new Error('No web app session data available');
+      }
+
+      // Sync the session data to extension storage
+      await this.syncWithWebApp(this.pendingWebAppSession);
+      
+      console.log('✅ Sync successful, showing dashboard');
+      this.showDashboard();
+      
+    } catch (error) {
+      console.error('❌ Sync failed:', error);
+      this.showError(`Sync failed: ${error.message}`);
+    } finally {
+      syncBtn.textContent = originalText;
+      syncBtn.disabled = false;
+    }
+  }
+
   async handleLogout() {
     try {
       await this.logout();
@@ -419,31 +543,64 @@ class PopupManager {
     }
   }
 
-  showLogin() {
+  showWebAppLoginDetected(webAppSession) {
+    const webAppLoginView = document.getElementById('webAppLoginView');
     const loginView = document.getElementById('loginView');
     const dashboardView = document.getElementById('dashboardView');
     const signupView = document.getElementById('signupView');
     
+    // Hide all other views
+    if (loginView) loginView.classList.add('hidden');
+    if (dashboardView) dashboardView.classList.add('hidden');
+    if (signupView) signupView.classList.add('hidden');
+    
+    // Show web app login view
+    if (webAppLoginView) {
+      webAppLoginView.classList.remove('hidden');
+      
+      // Update detected user info
+      const detectedEmail = document.getElementById('detectedEmail');
+      const detectedUserId = document.getElementById('detectedUserId');
+      
+      if (detectedEmail) detectedEmail.textContent = webAppSession.email || 'Unknown';
+      if (detectedUserId) detectedUserId.textContent = `ID: ${webAppSession.userId?.substring(0, 8)}...` || 'Unknown';
+    }
+    
+    // Store web app session for sync
+    this.pendingWebAppSession = webAppSession;
+  }
+
+  showLogin() {
+    const webAppLoginView = document.getElementById('webAppLoginView');
+    const loginView = document.getElementById('loginView');
+    const dashboardView = document.getElementById('dashboardView');
+    const signupView = document.getElementById('signupView');
+    
+    if (webAppLoginView) webAppLoginView.classList.add('hidden');
     if (loginView) loginView.classList.remove('hidden');
     if (dashboardView) dashboardView.classList.add('hidden');
     if (signupView) signupView.classList.add('hidden');
   }
 
   showSignup() {
+    const webAppLoginView = document.getElementById('webAppLoginView');
     const loginView = document.getElementById('loginView');
     const dashboardView = document.getElementById('dashboardView');
     const signupView = document.getElementById('signupView');
     
+    if (webAppLoginView) webAppLoginView.classList.add('hidden');
     if (loginView) loginView.classList.add('hidden');
     if (dashboardView) dashboardView.classList.add('hidden');
     if (signupView) signupView.classList.remove('hidden');
   }
 
   showDashboard() {
+    const webAppLoginView = document.getElementById('webAppLoginView');
     const loginView = document.getElementById('loginView');
     const dashboardView = document.getElementById('dashboardView');
     const signupView = document.getElementById('signupView');
     
+    if (webAppLoginView) webAppLoginView.classList.add('hidden');
     if (loginView) loginView.classList.add('hidden');
     if (dashboardView) dashboardView.classList.remove('hidden');
     if (signupView) signupView.classList.add('hidden');

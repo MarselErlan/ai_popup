@@ -388,7 +388,7 @@
       .trim();
   }
 
-  // Listen for authentication updates
+  // Listen for authentication updates and web app login checks
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'authenticationUpdated') {
       console.log("🔐 Authentication updated notification received");
@@ -412,6 +412,53 @@
         },
         bubbles: true
       }));
+    }
+    
+    if (request.action === 'checkWebAppLogin') {
+      console.log("🔍 Checking web app login status...");
+      
+      // Check if we're on the web app domain
+      const isWebApp = window.location.hostname === 'localhost' || 
+                      window.location.port === '5173' ||
+                      window.location.href.includes('ai-form-assistant');
+      
+      if (isWebApp) {
+        try {
+          // Try to get session data from localStorage
+          const sessionId = localStorage.getItem('session_id');
+          const userId = localStorage.getItem('user_id');
+          const email = localStorage.getItem('user_email');
+          
+          if (sessionId && userId && email) {
+            console.log('✅ Web app login detected:', { email, userId: userId.substring(0, 8) + '...' });
+            sendResponse({
+              isLoggedIn: true,
+              sessionId: sessionId,
+              userId: userId,
+              email: email
+            });
+          } else {
+            console.log('❌ No valid web app login found');
+            sendResponse({
+              isLoggedIn: false
+            });
+          }
+        } catch (error) {
+          console.error('❌ Error checking web app login:', error);
+          sendResponse({
+            isLoggedIn: false,
+            error: error.message
+          });
+        }
+      } else {
+        console.log('❌ Not on web app domain');
+        sendResponse({
+          isLoggedIn: false,
+          error: 'Not on web app domain'
+        });
+      }
+      
+      return true; // Keep message channel open for async response
     }
   });
 
