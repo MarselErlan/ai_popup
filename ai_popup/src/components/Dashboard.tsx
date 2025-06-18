@@ -37,6 +37,25 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   useEffect(() => {
     loadDocumentsStatus();
     checkExtensionStatus();
+    
+    // Listen for extension messages
+    const handleExtensionMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'AI_EXTENSION_LOADED' && event.data?.source === 'ai-form-assistant') {
+        console.log('🎉 Extension detected via message!');
+        setExtensionInstalled(true);
+        checkExtensionAuthStatus();
+      }
+    };
+    
+    window.addEventListener('message', handleExtensionMessage);
+    
+    // Check periodically for extension
+    const intervalId = setInterval(checkExtensionStatus, 3000);
+    
+    return () => {
+      window.removeEventListener('message', handleExtensionMessage);
+      clearInterval(intervalId);
+    };
   }, [user]);
 
   const loadDocumentsStatus = async () => {
@@ -236,11 +255,20 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   };
 
   const checkExtensionStatus = () => {
-    // Check if extension is installed
+    // Method 1: Check for our global variable (most reliable)
+    if ((window as any).aiFormAssistantExtension?.loaded) {
+      console.log('✅ Extension detected via global variable');
+      setExtensionInstalled(true);
+      checkExtensionAuthStatus();
+      return;
+    }
+    
+    // Method 2: Check for chrome.runtime (less reliable)
     if (typeof window !== 'undefined' && (window as any).chrome?.runtime) {
+      console.log('⚠️ Chrome runtime detected, but extension global not set');
       setExtensionInstalled(true);
       
-      // Check if extension has authentication data
+      // Try to check auth via chrome.storage
       try {
         (window as any).chrome.storage.local.get(['sessionId', 'userId'], (result: any) => {
           setExtensionLoggedIn(!!(result.sessionId && result.userId));
@@ -251,6 +279,19 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
       }
     } else {
       setExtensionInstalled(false);
+      setExtensionLoggedIn(false);
+    }
+  };
+
+  const checkExtensionAuthStatus = async () => {
+    try {
+      if ((window as any).aiFormAssistantExtension?.checkAuth) {
+        const isLoggedIn = await (window as any).aiFormAssistantExtension.checkAuth();
+        setExtensionLoggedIn(isLoggedIn);
+        console.log('🔐 Extension auth status:', isLoggedIn ? 'Logged in' : 'Not logged in');
+      }
+    } catch (error) {
+      console.error('Error checking extension auth:', error);
       setExtensionLoggedIn(false);
     }
   };
@@ -296,8 +337,11 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
         setExtensionLoggedIn(true);
         setActionStatus({
           type: 'success',
-          message: 'Successfully logged into browser extension!'
+          message: 'Successfully logged into browser extension! 🎉 You can now use AI form filling on any website.'
         });
+        
+        // Recheck extension status to update UI
+        setTimeout(checkExtensionStatus, 1000);
       } else {
         throw new Error('Extension not installed or not accessible');
       }
@@ -789,26 +833,47 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
               </div>
             )}
             
-            <button
-              onClick={checkExtensionStatus}
-              style={{
-                background: '#f3f4f6',
-                color: '#374151',
-                border: '1px solid #d1d5db',
-                padding: '1rem',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                cursor: 'pointer'
-              }}
-            >
-              🔄 Refresh Status
-            </button>
+                         <button
+               onClick={() => {
+                 checkExtensionStatus();
+                 checkExtensionAuthStatus();
+               }}
+               style={{
+                 background: '#f3f4f6',
+                 color: '#374151',
+                 border: '1px solid #d1d5db',
+                 padding: '1rem',
+                 borderRadius: '8px',
+                 fontSize: '0.875rem',
+                 cursor: 'pointer'
+               }}
+             >
+               🔄 Refresh Status
+             </button>
           </div>
           
                      <p style={{ color: '#6b7280', marginTop: '1rem', fontSize: '0.875rem' }}>
              The browser extension enables AI form filling on any website. Once installed and logged in, 
              you can click on form fields and use the AI button to automatically fill them.
            </p>
+           
+           {/* Debug Info */}
+           {!extensionInstalled && (
+             <div style={{ 
+               marginTop: '1rem', 
+               padding: '0.75rem', 
+               background: '#fef3c7', 
+               borderRadius: '6px',
+               fontSize: '0.875rem',
+               color: '#92400e'
+             }}>
+               <strong>💡 Not detecting extension?</strong> After installing:
+               <br />• Refresh this page (F5)
+               <br />• Click "Refresh Status" button
+               <br />• Make sure you extracted the zip file properly
+               <br />• Check that the extension shows as "Enabled" in chrome://extensions/
+             </div>
+           )}
            
            {/* Installation Instructions */}
            <div style={{ 

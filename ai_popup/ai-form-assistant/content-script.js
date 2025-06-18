@@ -297,5 +297,29 @@
     }
   });
 
+  // Notify the web page that the extension is loaded
+  const notifyExtensionLoaded = () => {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      window.postMessage({
+        type: 'AI_EXTENSION_LOADED',
+        source: 'ai-form-assistant'
+      }, '*');
+      
+      // Also set a global variable that the web app can check
+      window.aiFormAssistantExtension = {
+        version: '2.0.0',
+        loaded: true,
+        checkAuth: async () => {
+          const result = await chrome.storage.local.get(['sessionId', 'userId']);
+          return !!(result.sessionId && result.userId);
+        }
+      };
+    }
+  };
+
+  // Notify on load and periodically
+  notifyExtensionLoaded();
+  setInterval(notifyExtensionLoaded, 5000); // Notify every 5 seconds
+
   console.log("🎯 AI Form Assistant content script loaded and ready");
 })();
