@@ -342,11 +342,35 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
 
   const checkExtensionAuthStatus = async () => {
     try {
-      if ((window as any).aiFormAssistantExtension?.checkAuth) {
-        const isLoggedIn = await (window as any).aiFormAssistantExtension.checkAuth();
-        setExtensionLoggedIn(isLoggedIn);
-        console.log('🔐 Extension auth status:', isLoggedIn ? 'Logged in' : 'Not logged in');
+      // Method 1: Check DOM attributes (most reliable)
+      const domLoggedIn = document.documentElement.getAttribute('data-ai-extension-logged-in') === 'true';
+      
+      if (domLoggedIn) {
+        setExtensionLoggedIn(true);
+        console.log('🔐 Extension auth status (DOM):', 'Logged in');
+        return;
       }
+      
+      // Method 2: Check global variable and call checkAuth
+      const extensionObj = (window as any).aiFormAssistantExtension;
+      if (extensionObj?.checkAuth) {
+        const isLoggedIn = await extensionObj.checkAuth();
+        setExtensionLoggedIn(isLoggedIn);
+        console.log('🔐 Extension auth status (checkAuth):', isLoggedIn ? 'Logged in' : 'Not logged in');
+        return;
+      }
+      
+      // Method 3: Check global variable directly
+      if (extensionObj?.isLoggedIn !== undefined) {
+        setExtensionLoggedIn(extensionObj.isLoggedIn);
+        console.log('🔐 Extension auth status (direct):', extensionObj.isLoggedIn ? 'Logged in' : 'Not logged in');
+        return;
+      }
+      
+      // Fallback: assume not logged in
+      setExtensionLoggedIn(false);
+      console.log('🔐 Extension auth status (fallback):', 'Not logged in');
+      
     } catch (error) {
       console.error('Error checking extension auth:', error);
       setExtensionLoggedIn(false);
@@ -900,7 +924,19 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
                  console.log('🔄 Manual refresh clicked');
                  console.log('Current state:', { extensionInstalled, extensionLoggedIn, extensionDetectedOnce });
                  
-                 // Check for global variable in multiple contexts
+                 // Method 1: Check DOM attributes (most reliable)
+                 const extensionLoaded = document.documentElement.getAttribute('data-ai-extension-loaded') === 'true';
+                 const extensionVersion = document.documentElement.getAttribute('data-ai-extension-version');
+                 const extensionLoggedInDOM = document.documentElement.getAttribute('data-ai-extension-logged-in') === 'true';
+                 
+                 console.log('DOM attribute checks:', {
+                   loaded: extensionLoaded,
+                   version: extensionVersion,
+                   loggedIn: extensionLoggedInDOM,
+                   timestamp: document.documentElement.getAttribute('data-ai-extension-timestamp')
+                 });
+                 
+                 // Method 2: Check for global variable in multiple contexts
                  const windowVar = (window as any).aiFormAssistantExtension;
                  const documentVar = (document as any).aiFormAssistantExtension;
                  const parentVar = (window.parent as any)?.aiFormAssistantExtension;
@@ -915,14 +951,22 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
                    inFrame: window !== window.parent
                  });
                  
-                 // Force recheck regardless of previous state - check all contexts
+                 // Check if extension is detected by any method
                  const hasGlobalVar = !!(windowVar?.loaded || documentVar?.loaded || parentVar?.loaded || topVar?.loaded);
+                 const extensionDetected = extensionLoaded || hasGlobalVar;
                  
-                 if (hasGlobalVar) {
+                 if (extensionDetected) {
                    setExtensionInstalled(true);
                    setExtensionDetectedOnce(true);
-                   console.log('✅ Manual detection successful via global variable');
-                   checkExtensionAuthStatus();
+                   console.log('✅ Manual detection successful');
+                   
+                   // Update auth status
+                   if (extensionLoggedInDOM) {
+                     setExtensionLoggedIn(true);
+                     console.log('✅ Extension login status updated from DOM');
+                   } else {
+                     checkExtensionAuthStatus();
+                   }
                  } else {
                    // Fallback: try chrome storage check
                    if ((window as any).chrome?.storage) {
@@ -942,13 +986,13 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
                        console.log('❌ Chrome storage check failed:', error);
                      }
                    } else {
-                     console.log('❌ No global variable or chrome storage found');
+                     console.log('❌ No extension detected by any method');
                    }
                  }
                  
                  // Update message after all checks complete
                  setTimeout(() => {
-                   const finalCheck = !!(window as any).aiFormAssistantExtension?.loaded || extensionInstalled;
+                   const finalCheck = extensionDetected || extensionInstalled;
                    setActionStatus({
                      type: finalCheck ? 'success' : 'error',
                      message: finalCheck ? 
@@ -1002,6 +1046,9 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
                <div>Extension Installed: {extensionInstalled ? '✅ Yes' : '❌ No'}</div>
                <div>Extension Detected Once: {extensionDetectedOnce ? '✅ Yes' : '❌ No'}</div>
                <div>Extension Logged In: {extensionLoggedIn ? '✅ Yes' : '❌ No'}</div>
+               <div>DOM Loaded Attribute: {document.documentElement.getAttribute('data-ai-extension-loaded') === 'true' ? '✅ Present' : '❌ Missing'}</div>
+               <div>DOM Version Attribute: {document.documentElement.getAttribute('data-ai-extension-version') || '❌ Missing'}</div>
+               <div>DOM Auth Attribute: {document.documentElement.getAttribute('data-ai-extension-logged-in') === 'true' ? '✅ Logged In' : '❌ Not Logged In'}</div>
                <div>Global Variable (window): {(window as any).aiFormAssistantExtension?.loaded ? '✅ Present' : '❌ Missing'}</div>
                <div>Global Variable (document): {(document as any).aiFormAssistantExtension?.loaded ? '✅ Present' : '❌ Missing'}</div>
                <div>Global Variable (parent): {(window.parent as any)?.aiFormAssistantExtension?.loaded ? '✅ Present' : '❌ Missing'}</div>

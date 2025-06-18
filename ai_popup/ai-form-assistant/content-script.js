@@ -668,6 +668,16 @@
     }
   }
 
+  // Listen for storage changes to update auth status immediately
+  if (chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'local' && (changes.sessionId || changes.userId)) {
+        console.log('🔄 Storage changed, updating auth status');
+        updateGlobalAuthStatus();
+      }
+    });
+  }
+
   // Notify on load and set up periodic refresh
   notifyExtensionLoaded();
   updateGlobalAuthStatus(); // Initial auth status
