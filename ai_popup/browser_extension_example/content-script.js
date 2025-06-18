@@ -56,34 +56,37 @@
       const fieldLabel = getFieldLabel(currentInput);
       const pageUrl = window.location.href;
 
-      // Get authentication token from extension storage
-      let token = null;
+            // Get authentication session from extension storage
+      let sessionId = null;
+      let userId = null;
       try {
-        const result = await chrome.storage.local.get('token');
-        token = result.token;
-        console.log("🔐 Token from storage:", token ? "✅ Found" : "❌ Not found");
+        const result = await chrome.storage.local.get(['sessionId', 'userId']);
+        sessionId = result.sessionId;
+        userId = result.userId;
+        console.log("🔐 Session from storage:", sessionId ? "✅ Found" : "❌ Not found");
+        console.log("👤 User ID from storage:", userId ? "✅ Found" : "❌ Not found");
       } catch (err) {
         console.log("⚠️ Could not access extension storage:", err);
-    }
-    
+      }
+      
       const requestData = {
         label: fieldLabel,
         url: pageUrl,
-        user_id: "default", // Will be extracted from token by backend
+        user_id: userId || "default",
       };
 
       console.log("🧠 Detected field:", fieldLabel);
       console.log("📤 SENDING TO BACKEND:", requestData);
       console.log("📤 Question being sent:", `"${fieldLabel}"`);
       console.log("📤 URL:", pageUrl);
-      console.log("🔑 Token being sent:", token ? `${token.substring(0, 30)}...` : "❌ NO TOKEN");
+      console.log("🔑 Session being sent:", sessionId ? `${sessionId.substring(0, 20)}...` : "❌ NO SESSION");
 
       const headers = { "Content-Type": "application/json" };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-        console.log("✅ Authorization header added");
+      if (sessionId) {
+        headers["Authorization"] = `Session ${sessionId}`;
+        console.log("✅ Session authorization header added");
       } else {
-        console.log("❌ No token found - request may fail with 403");
+        console.log("❌ No session found - request will fail with 401");
       }
 
       const response = await fetch("http://localhost:8000/api/generate-field-answer", {
@@ -97,10 +100,10 @@
         console.log("🚨 Backend error response:", errorText);
         console.log("🚨 Response status:", response.status);
         
-        if (response.status === 403) {
-          currentInput.value = "🔐 Please login to use AI assistant";
-          console.log("🔐 Authentication required - please login through extension popup");
-      } else {
+        if (response.status === 401 || response.status === 403) {
+          currentInput.value = "🔐 Please login through extension popup";
+          console.log("🔐 Authentication required - click the extension icon to login");
+        } else {
           throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
         return;
