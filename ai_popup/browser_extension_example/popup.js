@@ -63,7 +63,8 @@ class PopupManager {
 
   async login(email, password) {
     try {
-      const response = await fetch(`${this.API_BASE_URL}/api/simple/login`, {
+      // Step 1: Authenticate user
+      const loginResponse = await fetch(`${this.API_BASE_URL}/api/simple/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -71,22 +72,52 @@ class PopupManager {
         body: JSON.stringify({ email, password })
       });
 
-      if (!response.ok) {
-        throw new Error('Login failed');
+      if (!loginResponse.ok) {
+        const errorData = await loginResponse.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Login failed');
       }
 
-      const data = await response.json();
+      const loginData = await loginResponse.json();
+      console.log('🔍 Login response data:', loginData);
       
-      // Store session ID
-      chrome.storage.local.set({
-        sessionId: data.session_id,
-        userId: data.user_id,
-        email: data.email
-      }, () => {
-        console.log('Session stored');
+      if (!loginData.user_id || !loginData.email) {
+        throw new Error('Invalid login response format');
+      }
+
+      // Step 2: Get/Create session for the user
+      const sessionResponse = await fetch(`${this.API_BASE_URL}/api/session/check-and-update/${loginData.user_id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
 
-      return data;
+      if (!sessionResponse.ok) {
+        throw new Error('Failed to create session');
+      }
+
+      const sessionData = await sessionResponse.json();
+      console.log('🔍 Session response data:', sessionData);
+      
+      // Store session and user info
+      const storageData = {
+        sessionId: sessionData.session_id,
+        userId: loginData.user_id,
+        email: loginData.email
+      };
+      
+      console.log('💾 Storing to extension storage:', storageData);
+      
+      chrome.storage.local.set(storageData, () => {
+        console.log('✅ Session and user data stored successfully');
+        
+        // Verify storage
+        chrome.storage.local.get(['sessionId', 'userId', 'email'], (result) => {
+          console.log('🔍 Verification - stored data:', result);
+        });
+      });
+
+      return { ...loginData, session_id: sessionData.session_id };
     } catch (error) {
       console.error('Login error:', error);
       throw error;

@@ -64,9 +64,23 @@
         sessionId = result.sessionId;
         userId = result.userId;
         console.log("🔐 Session from storage:", sessionId ? "✅ Found" : "❌ Not found");
-        console.log("👤 User ID from storage:", userId ? "✅ Found" : "❌ Not found");
+        console.log("👤 User ID from storage:", userId ? `✅ Found: ${userId}` : "❌ Not found");
+        console.log("📦 Full storage result:", result);
+        
+        // If no userId, this means user hasn't logged in through extension popup
+        if (!userId || !sessionId) {
+          currentInput.value = "🔐 Please login through extension popup first";
+          currentInput.disabled = false;
+          aiButton.style.display = 'none';
+          console.log("❌ Missing authentication - user must login through extension popup");
+          return;
+        }
       } catch (err) {
         console.log("⚠️ Could not access extension storage:", err);
+        currentInput.value = "⚠️ Extension storage error";
+        currentInput.disabled = false;
+        aiButton.style.display = 'none';
+        return;
       }
       
       const requestData = {
@@ -206,4 +220,9 @@
 
   console.log("🎯 AI Form Assistant content script loaded");
   console.log("🔧 Ready to assist with form filling");
+
+  // Debug function to check storage
+  chrome.storage.local.get(null, (result) => {
+    console.log("🔍 Current extension storage:", result);
+  });
 })();

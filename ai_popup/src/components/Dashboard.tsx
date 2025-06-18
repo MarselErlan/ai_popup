@@ -23,13 +23,20 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   const [uploadLoading, setUploadLoading] = useState({ resume: false, personalInfo: false });
   const [actionStatus, setActionStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [documentsStatus, setDocumentsStatus] = useState<DocumentStatus | null>(null);
+  const [fullName, setFullName] = useState<string>('');
+  const [llmTesting, setLlmTesting] = useState<boolean>(false);
+  const [llmResponse, setLlmResponse] = useState<{answer: string; data_source: string; reasoning: string} | null>(null);
+  const [extensionInstalled, setExtensionInstalled] = useState<boolean>(false);
+  const [extensionLoggedIn, setExtensionLoggedIn] = useState<boolean>(false);
+  const [extensionLoginLoading, setExtensionLoginLoading] = useState<boolean>(false);
   
   const resumeFileRef = useRef<HTMLInputElement>(null);
   const personalInfoFileRef = useRef<HTMLInputElement>(null);
 
-  // Load documents status on component mount
+  // Load documents status and check extension on component mount
   useEffect(() => {
     loadDocumentsStatus();
+    checkExtensionStatus();
   }, [user]);
 
   const loadDocumentsStatus = async () => {
@@ -154,7 +161,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     try {
       const blob = type === 'resume' 
         ? await authService.downloadResume()
-        : await authService.downloadPersonalInfo();
+        : await authService.downloadPersonalInfo(user?.id || '');
       
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -181,7 +188,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
       if (type === 'resume') {
         await authService.deleteResume();
       } else {
-        await authService.deletePersonalInfo();
+        await authService.deletePersonalInfo(user?.id || '');
       }
       
       setActionStatus({
@@ -205,6 +212,131 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     link.href = '/ai-popup-extension.zip'; // You'll need to create this zip file
     link.download = 'ai-popup-extension.zip';
     link.click();
+  };
+
+  const checkExtensionStatus = () => {
+    // Check if extension is installed
+    if (typeof window !== 'undefined' && (window as any).chrome?.runtime) {
+      setExtensionInstalled(true);
+      
+      // Check if extension has authentication data
+      try {
+        (window as any).chrome.storage.local.get(['sessionId', 'userId'], (result: any) => {
+          setExtensionLoggedIn(!!(result.sessionId && result.userId));
+        });
+      } catch (error) {
+        console.log('Extension storage not accessible');
+        setExtensionLoggedIn(false);
+      }
+    } else {
+      setExtensionInstalled(false);
+      setExtensionLoggedIn(false);
+    }
+  };
+
+  const loginToExtension = async () => {
+    if (!user?.email) {
+      setActionStatus({
+        type: 'error',
+        message: 'Please make sure you are logged into the web app first'
+      });
+      return;
+    }
+
+    setExtensionLoginLoading(true);
+    setActionStatus(null);
+
+    try {
+      // Get current session data from localStorage (web app)
+      const sessionId = localStorage.getItem('session_id');
+      const userId = localStorage.getItem('user_id');
+      const email = localStorage.getItem('user_email');
+
+      if (!sessionId || !userId) {
+        throw new Error('No active web app session found');
+      }
+
+      // Store session data in extension storage
+      if ((window as any).chrome?.storage) {
+        await new Promise<void>((resolve, reject) => {
+          (window as any).chrome.storage.local.set({
+            sessionId: sessionId,
+            userId: userId,
+            email: email
+          }, () => {
+            if ((window as any).chrome.runtime.lastError) {
+              reject(new Error((window as any).chrome.runtime.lastError.message));
+            } else {
+              resolve();
+            }
+          });
+        });
+
+        setExtensionLoggedIn(true);
+        setActionStatus({
+          type: 'success',
+          message: 'Successfully logged into browser extension!'
+        });
+      } else {
+        throw new Error('Extension not installed or not accessible');
+      }
+
+    } catch (error: any) {
+      console.error('Extension login failed:', error);
+      setActionStatus({
+        type: 'error',
+        message: error.message || 'Failed to login to extension. Make sure the extension is installed.'
+      });
+    } finally {
+      setExtensionLoginLoading(false);
+    }
+  };
+
+  const testLLMFunction = async () => {
+    if (!fullName.trim()) {
+      setActionStatus({
+        type: 'error',
+        message: 'Please enter a full name to test'
+      });
+      return;
+    }
+
+    setLlmTesting(true);
+    setLlmResponse(null);
+    setActionStatus(null);
+
+    try {
+      // Test the LLM function with the generate-field-answer API
+      const response = await authService.generateFieldAnswer({
+        field_type: 'text',
+        field_name: 'fullName',
+        field_id: 'test-full-name',
+        field_class: 'form-input',
+        field_label: 'Full Name',
+        field_placeholder: 'Enter your full name',
+        surrounding_text: `Testing LLM function with input: ${fullName}`
+      });
+
+      setLlmResponse({
+        answer: response,
+        data_source: 'LLM API Test',
+        reasoning: 'Generated from your uploaded documents and AI processing'
+      });
+
+      setActionStatus({
+        type: 'success',
+        message: 'LLM function tested successfully!'
+      });
+
+    } catch (error: any) {
+      console.error('LLM test failed:', error);
+      setActionStatus({
+        type: 'error',
+        message: error.message || 'LLM test failed. Make sure you have uploaded documents and are logged in.'
+      });
+    } finally {
+      setLlmTesting(false);
+    }
   };
 
   return (
@@ -521,41 +653,141 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
           </section>
         </div>
 
-        {/* Extension Download Section */}
+        {/* Extension Status & Login Section */}
         <section style={{
           background: 'white',
           borderRadius: '12px',
           padding: '2rem',
           marginBottom: '2rem',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-          textAlign: 'center'
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
         }}>
-          <h2 style={{ margin: '0 0 1rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
-            🚀 Browser Extension
+          <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
+            🚀 Browser Extension Setup
           </h2>
           
-          <p style={{ color: '#6b7280', marginBottom: '2rem', maxWidth: '600px', margin: '0 auto 2rem auto' }}>
-            Download and install the browser extension to start using AI-powered form filling on any website.
-          </p>
-
-          <button
-            onClick={downloadExtension}
-            style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              padding: '1rem 2rem',
-              border: 'none',
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+            {/* Extension Status */}
+            <div style={{ 
+              padding: '1rem', 
+              border: '1px solid #e5e7eb', 
               borderRadius: '8px',
-              fontSize: '1.1rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
-          >
-            📥 Download Extension
-          </button>
+              background: extensionInstalled ? '#f0fdf4' : '#fef2f2'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '1.25rem' }}>🔧</span>
+                <strong>Extension Status</strong>
+              </div>
+              <p style={{ 
+                margin: 0,
+                color: extensionInstalled ? '#16a34a' : '#dc2626',
+                fontWeight: '500'
+              }}>
+                {extensionInstalled ? '✅ Installed' : '❌ Not installed'}
+              </p>
+            </div>
+            
+            {/* Login Status */}
+            <div style={{ 
+              padding: '1rem', 
+              border: '1px solid #e5e7eb', 
+              borderRadius: '8px',
+              background: extensionLoggedIn ? '#f0fdf4' : '#fef2f2'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '1.25rem' }}>🔐</span>
+                <strong>Extension Login</strong>
+              </div>
+              <p style={{ 
+                margin: 0,
+                color: extensionLoggedIn ? '#16a34a' : '#dc2626',
+                fontWeight: '500'
+              }}>
+                {extensionLoggedIn ? '✅ Logged in' : '❌ Not logged in'}
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {!extensionInstalled && (
+              <button
+                onClick={downloadExtension}
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  padding: '1rem 2rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                📥 Download Extension
+              </button>
+            )}
+            
+            {extensionInstalled && !extensionLoggedIn && (
+              <button
+                onClick={loginToExtension}
+                disabled={extensionLoginLoading}
+                style={{
+                  background: extensionLoginLoading ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: 'white',
+                  padding: '1rem 2rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  cursor: extensionLoginLoading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {extensionLoginLoading ? '⏳ Logging in...' : '🔐 Login to Extension'}
+              </button>
+            )}
+            
+            {extensionInstalled && extensionLoggedIn && (
+              <div style={{
+                padding: '1rem 2rem',
+                background: '#f0fdf4',
+                color: '#16a34a',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                ✅ Extension ready for use!
+              </div>
+            )}
+            
+            <button
+              onClick={checkExtensionStatus}
+              style={{
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                padding: '1rem',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                cursor: 'pointer'
+              }}
+            >
+              🔄 Refresh Status
+            </button>
+          </div>
+          
+          <p style={{ color: '#6b7280', marginTop: '1rem', fontSize: '0.875rem' }}>
+            The browser extension enables AI form filling on any website. Once installed and logged in, 
+            you can click on form fields and use the AI button to automatically fill them.
+          </p>
         </section>
 
         {/* Usage Instructions */}
@@ -593,6 +825,118 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
                 Click form fields and let AI fill them with your information
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* LLM Function Test Section */}
+        <section style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '2rem',
+          marginTop: '2rem',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+        }}>
+          <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
+            🧠 Test LLM Function
+          </h2>
+          
+          <div style={{ maxWidth: '600px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '0.5rem',
+              color: '#374151',
+              fontSize: '0.875rem',
+              fontWeight: '500'
+            }}>
+              Test Input (Full Name)
+            </label>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Enter your full name to test LLM"
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#3b82f6';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#d1d5db';
+                  e.target.style.boxShadow = 'none';
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    testLLMFunction();
+                  }
+                }}
+              />
+              <button
+                onClick={testLLMFunction}
+                disabled={llmTesting || !fullName.trim()}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: (llmTesting || !fullName.trim()) ? '#9ca3af' : 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  cursor: (llmTesting || !fullName.trim()) ? 'not-allowed' : 'pointer',
+                  minWidth: '120px'
+                }}
+              >
+                {llmTesting ? '🧠 Testing...' : '🚀 Test LLM'}
+              </button>
+            </div>
+            
+            <p style={{
+              margin: '0 0 1.5rem 0',
+              color: '#6b7280',
+              fontSize: '0.875rem'
+            }}>
+              This will test your LLM function using your uploaded documents and real authentication.
+            </p>
+
+            {/* LLM Response Display */}
+            {llmResponse && (
+              <div style={{
+                background: '#f0fdf4',
+                border: '1px solid #d1fae5',
+                borderRadius: '8px',
+                padding: '1rem',
+                marginTop: '1rem'
+              }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: '#16a34a', fontSize: '1rem' }}>
+                  ✅ LLM Response:
+                </h3>
+                <div style={{
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  padding: '0.75rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  <strong>Answer:</strong> {llmResponse.answer}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.875rem' }}>
+                  <div>
+                    <strong>Data Source:</strong> {llmResponse.data_source}
+                  </div>
+                  <div>
+                    <strong>Reasoning:</strong> {llmResponse.reasoning}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </main>
