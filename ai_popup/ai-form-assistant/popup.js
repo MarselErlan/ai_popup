@@ -61,39 +61,7 @@ class PopupManager {
     });
   }
 
-  async validateSession(sessionId) {
-    try {
-      console.log('🔍 Validating session:', sessionId);
-      
-      const response = await fetch(`${this.API_BASE_URL}/api/session/current/${sessionId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
 
-      if (response.ok) {
-        const sessionData = await response.json();
-        console.log('✅ Session is valid:', sessionData);
-        return true;
-      } else {
-        console.log('❌ Session validation failed:', response.status);
-        return false;
-      }
-    } catch (error) {
-      console.error('❌ Session validation error:', error);
-      return false;
-    }
-  }
-
-  async clearStoredData() {
-    return new Promise((resolve) => {
-      chrome.storage.local.remove(['sessionId', 'userId', 'email'], () => {
-        console.log('🗑️ Stored data cleared');
-        resolve();
-      });
-    });
-  }
 
   async signup(email, password) {
     try {
@@ -123,6 +91,8 @@ class PopupManager {
 
   async login(email, password) {
     try {
+      console.log('📡 Step 1: Authenticating user...');
+      
       // Step 1: Authenticate user
       const loginResponse = await fetch(`${this.API_BASE_URL}/api/simple/login`, {
         method: 'POST',
@@ -132,18 +102,29 @@ class PopupManager {
         body: JSON.stringify({ email, password })
       });
 
+      console.log('📡 Login response status:', loginResponse.status);
+
       if (!loginResponse.ok) {
-        const errorData = await loginResponse.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Login failed');
+        const errorText = await loginResponse.text();
+        console.error('❌ Login API error:', errorText);
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.detail || `Login failed (${loginResponse.status})`);
+        } catch (parseError) {
+          throw new Error(`Login failed (${loginResponse.status}): ${errorText}`);
+        }
       }
 
       const loginData = await loginResponse.json();
-      console.log('🔍 Login response data:', loginData);
+      console.log('✅ Login response data:', loginData);
       
       if (!loginData.user_id || !loginData.email) {
-        throw new Error('Invalid login response format');
+        throw new Error('Invalid login response format - missing user_id or email');
       }
 
+      console.log('📡 Step 2: Creating/updating session...');
+      
       // Step 2: Get/Create session for the user
       const sessionResponse = await fetch(`${this.API_BASE_URL}/api/session/check-and-update/${loginData.user_id}`, {
         method: 'POST',
@@ -152,12 +133,16 @@ class PopupManager {
         }
       });
 
+      console.log('📡 Session response status:', sessionResponse.status);
+
       if (!sessionResponse.ok) {
-        throw new Error('Failed to create session');
+        const errorText = await sessionResponse.text();
+        console.error('❌ Session API error:', errorText);
+        throw new Error(`Failed to create session (${sessionResponse.status}): ${errorText}`);
       }
 
       const sessionData = await sessionResponse.json();
-      console.log('🔍 Session response data:', sessionData);
+      console.log('✅ Session response data:', sessionData);
       
       // Store session and user info
       const storageData = {
@@ -166,20 +151,28 @@ class PopupManager {
         email: loginData.email
       };
       
-      console.log('💾 Storing to extension storage:', storageData);
+      console.log('💾 Step 3: Storing to extension storage:', storageData);
       
-      chrome.storage.local.set(storageData, () => {
-        console.log('✅ Session and user data stored successfully');
-        
-        // Verify storage
-        chrome.storage.local.get(['sessionId', 'userId', 'email'], (result) => {
-          console.log('🔍 Verification - stored data:', result);
+      return new Promise((resolve, reject) => {
+        chrome.storage.local.set(storageData, () => {
+          if (chrome.runtime.lastError) {
+            console.error('❌ Storage error:', chrome.runtime.lastError);
+            reject(new Error('Failed to store session data'));
+            return;
+          }
+          
+          console.log('✅ Session and user data stored successfully');
+          
+          // Verify storage
+          chrome.storage.local.get(['sessionId', 'userId', 'email'], (result) => {
+            console.log('🔍 Verification - stored data:', result);
+            resolve({ ...loginData, session_id: sessionData.session_id });
+          });
         });
       });
 
-      return { ...loginData, session_id: sessionData.session_id };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('❌ Login error:', error);
       throw error;
     }
   }
@@ -189,6 +182,7 @@ class PopupManager {
       const sessionId = await this.getStoredSessionId();
       
       if (sessionId) {
+        console.log('🚪 Logging out session:', sessionId);
         await fetch(`${this.API_BASE_URL}/api/logout`, {
           method: 'POST',
           headers: {
@@ -200,30 +194,33 @@ class PopupManager {
       }
 
       // Clear stored data
-      chrome.storage.local.remove(['sessionId', 'userId', 'email'], () => {
-        console.log('Session cleared');
-      });
+      await this.clearStoredData();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('❌ Logout error:', error);
+      // Clear data anyway
+      await this.clearStoredData();
     }
   }
 
+  async clearStoredData() {
+    return new Promise((resolve) => {
+      chrome.storage.local.remove(['sessionId', 'userId', 'email'], () => {
+        console.log('🗑️ Session data cleared');
+        resolve();
+      });
+    });
+  }
+
   async initializeUI() {
-    // Check if user is already logged in and session is valid
+    // Check if user is already logged in
     try {
       const sessionId = await this.getStoredSessionId();
       
       if (sessionId) {
-        // Verify session is still valid
-        const isValid = await this.validateSession(sessionId);
-        if (isValid) {
-          this.showDashboard();
-        } else {
-          // Session expired, clear storage and show login
-          await this.clearStoredData();
-          this.showLogin();
-        }
+        console.log('🔍 Found existing session:', sessionId);
+        this.showDashboard();
       } else {
+        console.log('🔍 No existing session found');
         this.showLogin();
       }
     } catch (error) {
@@ -289,11 +286,12 @@ class PopupManager {
     const originalText = loginBtn.textContent;
     
     try {
+      console.log('🔐 Starting login process for:', email);
       loginBtn.innerHTML = '<div class="loading"></div> Logging in...';
       loginBtn.disabled = true;
 
       const data = await this.login(email, password);
-      console.log('Login successful:', data);
+      console.log('✅ Login successful:', data);
       
       // Notify content scripts about authentication
       chrome.tabs.query({}, (tabs) => {
@@ -308,8 +306,8 @@ class PopupManager {
 
       this.showDashboard();
     } catch (error) {
-      console.error('Login failed:', error);
-      this.showError('Login failed. Please check your credentials.');
+      console.error('❌ Login failed:', error);
+      this.showError(`Login failed: ${error.message}`);
     } finally {
       loginBtn.textContent = originalText;
       loginBtn.disabled = false;
