@@ -41,31 +41,31 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     // Initial check - but don't be too eager
     setTimeout(checkExtensionStatus, 1000);
     
-    // Listen for extension messages
+    // Listen for extension messages (but only act on first one)
     const handleExtensionMessage = (event: MessageEvent) => {
       if (event.data?.type === 'AI_EXTENSION_LOADED' && event.data?.source === 'ai-form-assistant') {
         console.log('🎉 Extension detected via message!', event.data);
-        if (!extensionInstalled) {
+        if (!extensionDetectedOnce) {
           setExtensionInstalled(true);
           setExtensionDetectedOnce(true);
           console.log('📱 Extension status updated via message');
+          checkExtensionAuthStatus();
         }
-        checkExtensionAuthStatus();
       }
     };
     
     window.addEventListener('message', handleExtensionMessage);
     
-    // Check periodically for extension (but less frequently to avoid flickering)
+    // Check periodically for extension (very infrequently to avoid loops)
     const intervalId = setInterval(() => {
       // Only check if we haven't detected the extension yet
-      if (!extensionInstalled) {
+      if (!extensionDetectedOnce) {
         checkExtensionStatus();
-      } else {
-        // If extension is detected, just check auth status periodically
+      } else if (extensionInstalled) {
+        // If extension is detected, just check auth status occasionally
         checkExtensionAuthStatus();
       }
-    }, 10000); // Reduced frequency to 10 seconds
+    }, 15000); // Very infrequent checks to avoid loops
     
     return () => {
       window.removeEventListener('message', handleExtensionMessage);
@@ -270,10 +270,12 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   };
 
     const checkExtensionStatus = () => {
-    // Method 1: Check for our specific global variable (ONLY reliable method)
-    if ((window as any).aiFormAssistantExtension?.loaded) {
-      console.log('✅ Extension detected via global variable');
+    // Check for our specific global variable
+    const hasGlobalVar = !!(window as any).aiFormAssistantExtension?.loaded;
+    
+    if (hasGlobalVar) {
       if (!extensionInstalled) {
+        console.log('✅ Extension detected via global variable');
         setExtensionInstalled(true);
         setExtensionDetectedOnce(true);
         console.log('🎉 Extension status set to installed');
@@ -282,17 +284,18 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
       return;
     }
     
-    // If we've detected it before but global variable is gone, keep it as installed
-    // (extension might be temporarily reloading)
-    if (extensionDetectedOnce && !extensionInstalled) {
-      console.log('🔄 Extension was detected before, keeping as installed');
-      setExtensionInstalled(true);
+    // If we've detected it before, keep it as installed (don't flip-flop)
+    if (extensionDetectedOnce) {
+      if (!extensionInstalled) {
+        console.log('🔄 Extension was detected before, keeping as installed');
+        setExtensionInstalled(true);
+      }
       return;
     }
     
-    // If no global variable and haven't detected before, mark as not installed
-    if (!extensionDetectedOnce) {
-      console.log('❌ Extension not detected - waiting for installation');
+    // Only mark as not installed if we've never detected it
+    if (!extensionDetectedOnce && extensionInstalled) {
+      console.log('❌ Extension not detected - marking as not installed');
       setExtensionInstalled(false);
       setExtensionLoggedIn(false);
     }

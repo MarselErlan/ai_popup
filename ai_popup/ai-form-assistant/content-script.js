@@ -157,14 +157,25 @@
   // Get authentication data from storage
   async function getAuthenticationData() {
     return new Promise((resolve) => {
-      chrome.storage.local.get(['sessionId', 'userId', 'email'], (result) => {
-        console.log("🔐 Auth data from storage:", {
-          sessionId: result.sessionId ? '✅ Found' : '❌ Missing',
-          userId: result.userId ? '✅ Found' : '❌ Missing',
-          email: result.email ? '✅ Found' : '❌ Missing'
+      try {
+        chrome.storage.local.get(['sessionId', 'userId', 'email'], (result) => {
+          if (chrome.runtime.lastError) {
+            console.warn("⚠️ Chrome storage error:", chrome.runtime.lastError);
+            resolve({});
+            return;
+          }
+          
+          console.log("🔐 Auth data from storage:", {
+            sessionId: result.sessionId ? '✅ Found' : '❌ Missing',
+            userId: result.userId ? '✅ Found' : '❌ Missing',
+            email: result.email ? '✅ Found' : '❌ Missing'
+          });
+          resolve(result);
         });
-        resolve(result);
-      });
+      } catch (error) {
+        console.warn("⚠️ Extension context error:", error);
+        resolve({});
+      }
     });
   }
 
@@ -297,37 +308,73 @@
     }
   });
 
+  // Track if we've already notified to prevent spam
+  let hasNotified = false;
+  
   // Notify the web page that the extension is loaded
   const notifyExtensionLoaded = () => {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      window.postMessage({
-        type: 'AI_EXTENSION_LOADED',
-        source: 'ai-form-assistant',
-        timestamp: Date.now()
-      }, '*');
+      // Only send message once per page load
+      if (!hasNotified) {
+        window.postMessage({
+          type: 'AI_EXTENSION_LOADED',
+          source: 'ai-form-assistant',
+          timestamp: Date.now()
+        }, '*');
+        hasNotified = true;
+        console.log('📡 Extension notification sent to web app');
+      }
       
-      // Also set a global variable that the web app can check
+      // Always ensure global variable is set (this is the most reliable method)
       window.aiFormAssistantExtension = {
         version: '2.0.0',
         loaded: true,
         timestamp: Date.now(),
         checkAuth: async () => {
-          const result = await chrome.storage.local.get(['sessionId', 'userId']);
-          return !!(result.sessionId && result.userId);
+          try {
+            const result = await chrome.storage.local.get(['sessionId', 'userId']);
+            return !!(result.sessionId && result.userId);
+          } catch (error) {
+            console.warn('Auth check failed:', error);
+            return false;
+          }
         }
       };
       
-      // Set a marker in storage so we can identify our extension
-      chrome.storage.local.set({
-        extensionId: 'ai-form-assistant',
-        lastActivity: Date.now()
-      });
+      // Set a marker in storage (with error handling)
+      try {
+        chrome.storage.local.set({
+          extensionId: 'ai-form-assistant',
+          lastActivity: Date.now()
+        });
+      } catch (error) {
+        console.warn('Could not set storage marker:', error);
+      }
     }
   };
 
-  // Notify on load and periodically
+  // Notify on load and set up periodic refresh of global variable only
   notifyExtensionLoaded();
-  setInterval(notifyExtensionLoaded, 5000); // Notify every 5 seconds
+  
+  // Refresh global variable every 10 seconds (no messages, no storage calls)
+  setInterval(() => {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      window.aiFormAssistantExtension = {
+        version: '2.0.0',
+        loaded: true,
+        timestamp: Date.now(),
+        checkAuth: async () => {
+          try {
+            const result = await chrome.storage.local.get(['sessionId', 'userId']);
+            return !!(result.sessionId && result.userId);
+          } catch (error) {
+            console.warn('Auth check failed:', error);
+            return false;
+          }
+        }
+      };
+    }
+  }, 10000);
 
   console.log("🎯 AI Form Assistant content script loaded and ready");
 })();
