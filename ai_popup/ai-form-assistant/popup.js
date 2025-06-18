@@ -61,6 +61,66 @@ class PopupManager {
     });
   }
 
+  async validateSession(sessionId) {
+    try {
+      console.log('🔍 Validating session:', sessionId);
+      
+      const response = await fetch(`${this.API_BASE_URL}/api/session/current/${sessionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const sessionData = await response.json();
+        console.log('✅ Session is valid:', sessionData);
+        return true;
+      } else {
+        console.log('❌ Session validation failed:', response.status);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Session validation error:', error);
+      return false;
+    }
+  }
+
+  async clearStoredData() {
+    return new Promise((resolve) => {
+      chrome.storage.local.remove(['sessionId', 'userId', 'email'], () => {
+        console.log('🗑️ Stored data cleared');
+        resolve();
+      });
+    });
+  }
+
+  async signup(email, password) {
+    try {
+      console.log('📝 Registering user:', email);
+      
+      const response = await fetch(`${this.API_BASE_URL}/api/simple/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Registration failed');
+      }
+
+      const data = await response.json();
+      console.log('✅ User registered:', data);
+      return data;
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
+    }
+  }
+
   async login(email, password) {
     try {
       // Step 1: Authenticate user
@@ -148,15 +208,28 @@ class PopupManager {
     }
   }
 
-  initializeUI() {
-    // Check if user is already logged in
-    this.getStoredSessionId().then(sessionId => {
+  async initializeUI() {
+    // Check if user is already logged in and session is valid
+    try {
+      const sessionId = await this.getStoredSessionId();
+      
       if (sessionId) {
-        this.showDashboard();
+        // Verify session is still valid
+        const isValid = await this.validateSession(sessionId);
+        if (isValid) {
+          this.showDashboard();
+        } else {
+          // Session expired, clear storage and show login
+          await this.clearStoredData();
+          this.showLogin();
+        }
       } else {
         this.showLogin();
       }
-    });
+    } catch (error) {
+      console.error('Error initializing UI:', error);
+      this.showLogin();
+    }
 
     // Set up event listeners
     this.setupEventListeners();
@@ -197,6 +270,18 @@ class PopupManager {
         this.showLogin();
       });
     }
+
+    // Signup form
+    const signupForm = document.getElementById('signupForm');
+    if (signupForm) {
+      signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('signupEmail').value;
+        const password = document.getElementById('signupPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        await this.handleSignup(email, password, confirmPassword);
+      });
+    }
   }
 
   async handleLogin(email, password) {
@@ -228,6 +313,40 @@ class PopupManager {
     } finally {
       loginBtn.textContent = originalText;
       loginBtn.disabled = false;
+    }
+  }
+
+  async handleSignup(email, password, confirmPassword) {
+    const signupBtn = document.getElementById('signupBtn');
+    const originalText = signupBtn.textContent;
+    
+    try {
+      // Validate passwords match
+      if (password !== confirmPassword) {
+        this.showError('Passwords do not match', 'signupErrorMessage');
+        return;
+      }
+
+      if (password.length < 6) {
+        this.showError('Password must be at least 6 characters long', 'signupErrorMessage');
+        return;
+      }
+
+      signupBtn.innerHTML = '<div class="loading"></div> Creating account...';
+      signupBtn.disabled = true;
+
+      const data = await this.signup(email, password);
+      console.log('Signup successful:', data);
+      
+      // Automatically login after successful signup
+      await this.handleLogin(email, password);
+      
+    } catch (error) {
+      console.error('Signup failed:', error);
+      this.showError('Account creation failed. Please try again.', 'signupErrorMessage');
+    } finally {
+      signupBtn.textContent = originalText;
+      signupBtn.disabled = false;
     }
   }
 
@@ -291,8 +410,8 @@ class PopupManager {
     }
   }
 
-  showError(message) {
-    const errorDiv = document.getElementById('errorMessage');
+  showError(message, elementId = 'errorMessage') {
+    const errorDiv = document.getElementById(elementId);
     if (errorDiv) {
       errorDiv.textContent = message;
       errorDiv.classList.remove('hidden');

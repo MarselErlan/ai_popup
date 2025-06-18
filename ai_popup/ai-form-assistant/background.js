@@ -39,13 +39,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Get current authentication status
 async function handleGetAuthStatus(sendResponse) {
   try {
-    const result = await chrome.storage.local.get(['token', 'user']);
-    const isAuthenticated = !!(result.token && result.user);
+    const result = await chrome.storage.local.get(['sessionId', 'userId', 'email']);
+    const isAuthenticated = !!(result.sessionId && result.userId);
     
     sendResponse({
       success: true,
       isAuthenticated: isAuthenticated,
-      user: result.user || null
+      user: result.email ? { 
+        user_id: result.userId, 
+        email: result.email,
+        session_id: result.sessionId 
+      } : null
     });
   } catch (error) {
     console.error('❌ Error getting auth status:', error);
