@@ -93,14 +93,8 @@
       // Prepare field data
       const fieldData = analyzeField(currentInput);
       const requestData = {
-        field_type: fieldData.type,
-        field_name: fieldData.name,
-        field_id: fieldData.id,
-        field_class: fieldData.className,
-        field_label: fieldData.label,
-        field_placeholder: fieldData.placeholder,
-        surrounding_text: fieldData.context,
-        page_url: window.location.href
+        label: fieldData.label,
+        url: window.location.href
       };
 
       console.log("🧠 Field analysis:", fieldData);
@@ -112,7 +106,7 @@
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Session ${authData.sessionId}`
+          "Authorization": authData.sessionId
         },
         body: JSON.stringify(requestData),
       });
@@ -122,7 +116,42 @@
         console.log("🚨 API error:", response.status, errorText);
         
         if (response.status === 401 || response.status === 403) {
-          currentInput.value = "🔐 Session expired - please login again";
+          console.log("🔄 Session expired, attempting to refresh from web app...");
+          
+          // Try to refresh session from web app
+          const refreshed = await refreshSessionFromWebApp();
+          if (refreshed) {
+            console.log("✅ Session refreshed successfully, retrying request...");
+            // Retry the request with fresh session
+            const newAuthData = await getAuthenticationData();
+            if (newAuthData.sessionId) {
+                             // Retry the API call
+               const retryResponse = await fetch(`${API_BASE_URL}/api/generate-field-answer`, {
+                 method: "POST",
+                 headers: {
+                   "Content-Type": "application/json",
+                   "Authorization": newAuthData.sessionId
+                 },
+                 body: JSON.stringify(requestData),
+               });
+              
+              if (retryResponse.ok) {
+                const retryData = await retryResponse.json();
+                if (retryData.answer) {
+                  currentInput.value = retryData.answer;
+                  console.log("✅ AI Response (after refresh):", {
+                    question: fieldData.label,
+                    answer: retryData.answer,
+                    dataSource: retryData.data_source,
+                    reasoning: retryData.reasoning
+                  });
+                  return;
+                }
+              }
+            }
+          }
+          
+          currentInput.value = "🔐 Session expired - please login again through the web app";
           // Clear invalid session
           chrome.storage.local.remove(['sessionId', 'userId']);
         } else {
@@ -177,6 +206,64 @@
         resolve({});
       }
     });
+  }
+
+  // Refresh session from web app
+  async function refreshSessionFromWebApp() {
+    try {
+      console.log("🔄 Attempting to refresh session from web app...");
+      
+      // Send message to page to get fresh session data
+      return new Promise((resolve) => {
+        // Send request for fresh session
+        window.postMessage({
+          type: 'REQUEST_FRESH_SESSION',
+          source: 'ai-form-assistant-extension'
+        }, '*');
+        
+        // Listen for response
+        const handleSessionResponse = (event) => {
+          if (event.data?.type === 'FRESH_SESSION_RESPONSE' && event.data?.source === 'ai-form-assistant-webapp') {
+            window.removeEventListener('message', handleSessionResponse);
+            
+            if (event.data.sessionData && event.data.sessionData.sessionId) {
+              console.log("✅ Received fresh session from web app");
+              
+              // Store fresh session in extension storage with correct keys
+              chrome.storage.local.set({
+                sessionId: event.data.sessionData.sessionId,
+                userId: event.data.sessionData.userId,
+                email: event.data.sessionData.email
+              }, () => {
+                if (chrome.runtime.lastError) {
+                  console.error("❌ Failed to store fresh session:", chrome.runtime.lastError);
+                  resolve(false);
+                } else {
+                  console.log("✅ Fresh session stored successfully");
+                  resolve(true);
+                }
+              });
+            } else {
+              console.log("❌ No valid session data received from web app");
+              resolve(false);
+            }
+          }
+        };
+        
+        window.addEventListener('message', handleSessionResponse);
+        
+        // Timeout after 3 seconds
+        setTimeout(() => {
+          window.removeEventListener('message', handleSessionResponse);
+          console.log("⏰ Session refresh timeout - web app may not be available");
+          resolve(false);
+        }, 3000);
+      });
+      
+    } catch (error) {
+      console.error("❌ Session refresh error:", error);
+      return false;
+    }
   }
 
   // Enhanced field analysis
@@ -308,38 +395,146 @@
     }
   });
 
+  // Listen for messages from page context
+  window.addEventListener('message', (event) => {
+    // Handle auth check requests from page context
+    if (event.data?.type === 'CHECK_EXTENSION_AUTH' && event.data?.source === 'ai-form-assistant-page') {
+      console.log('🔐 Received auth check request from page context');
+      
+      chrome.storage.local.get(['sessionId', 'userId']).then(result => {
+        window.postMessage({
+          type: 'EXTENSION_AUTH_RESPONSE',
+          source: 'ai-form-assistant',
+          isLoggedIn: !!(result.sessionId && result.userId)
+        }, '*');
+      }).catch(error => {
+        console.warn('Error checking auth:', error);
+        window.postMessage({
+          type: 'EXTENSION_AUTH_RESPONSE',
+          source: 'ai-form-assistant',
+          isLoggedIn: false
+        }, '*');
+      });
+    }
+    
+    // Handle session refresh requests from extension
+    if (event.data?.type === 'REQUEST_FRESH_SESSION' && event.data?.source === 'ai-form-assistant-extension') {
+      console.log('🔄 Received session refresh request from extension');
+      
+      // Check if we're on the web app domain
+      const isWebApp = window.location.hostname === 'localhost' || 
+                      window.location.port === '5173' ||
+                      window.location.href.includes('ai-form-assistant');
+      
+      if (isWebApp) {
+        // Try to get session data from localStorage
+        const sessionId = localStorage.getItem('session_id');
+        const userId = localStorage.getItem('user_id');
+        const email = localStorage.getItem('user_email');
+        
+        if (sessionId && userId) {
+          console.log('✅ Found fresh session in web app localStorage');
+          window.postMessage({
+            type: 'FRESH_SESSION_RESPONSE',
+            source: 'ai-form-assistant-webapp',
+            sessionData: {
+              sessionId,
+              userId,
+              email
+            }
+          }, '*');
+        } else {
+          console.log('❌ No valid session found in web app localStorage');
+          window.postMessage({
+            type: 'FRESH_SESSION_RESPONSE',
+            source: 'ai-form-assistant-webapp',
+            sessionData: null
+          }, '*');
+        }
+      } else {
+        console.log('❌ Session refresh request not on web app domain');
+        window.postMessage({
+          type: 'FRESH_SESSION_RESPONSE',
+          source: 'ai-form-assistant-webapp',
+          sessionData: null
+        }, '*');
+      }
+    }
+  });
+
   // Track if we've already notified to prevent spam
   let hasNotified = false;
   
   // Notify the web page that the extension is loaded
   const notifyExtensionLoaded = () => {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    console.log('🔍 Extension checking hostname:', window.location.hostname, 'port:', window.location.port);
+    
+    // Work on localhost and development URLs
+    const isDevelopment = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1' ||
+                         window.location.port === '5173' ||
+                         window.location.port === '3000';
+                         
+    if (isDevelopment) {
+      console.log('✅ Development environment detected - setting up extension communication');
       // Only send message once per page load
       if (!hasNotified) {
+        // Send postMessage
         window.postMessage({
           type: 'AI_EXTENSION_LOADED',
           source: 'ai-form-assistant',
           timestamp: Date.now()
         }, '*');
+        
+        // Also dispatch a custom event as backup
+        const event = new CustomEvent('aiExtensionLoaded', {
+          detail: {
+            type: 'AI_EXTENSION_LOADED',
+            source: 'ai-form-assistant',
+            timestamp: Date.now()
+          }
+        });
+        document.dispatchEvent(event);
+        
         hasNotified = true;
-        console.log('📡 Extension notification sent to web app');
+        console.log('📡 Extension notification sent via postMessage and custom event');
       }
       
-      // Always ensure global variable is set (this is the most reliable method)
-      window.aiFormAssistantExtension = {
-        version: '2.0.0',
-        loaded: true,
-        timestamp: Date.now(),
-        checkAuth: async () => {
-          try {
-            const result = await chrome.storage.local.get(['sessionId', 'userId']);
-            return !!(result.sessionId && result.userId);
-          } catch (error) {
-            console.warn('Auth check failed:', error);
-            return false;
-          }
+      // SOLUTION: Use DOM events and custom properties instead of script injection
+      // This avoids CSP issues while still communicating with page context
+      
+      // Set custom property on document element (accessible from page context)
+      document.documentElement.setAttribute('data-ai-extension-loaded', 'true');
+      document.documentElement.setAttribute('data-ai-extension-version', '2.0.0');
+      document.documentElement.setAttribute('data-ai-extension-timestamp', Date.now().toString());
+      
+      // Create a custom event with extension data
+      const extensionLoadedEvent = new CustomEvent('aiExtensionLoaded', {
+        detail: {
+          type: 'AI_EXTENSION_LOADED',
+          source: 'ai-form-assistant',
+          version: '2.0.0',
+          loaded: true,
+          timestamp: Date.now()
+        },
+        bubbles: true
+      });
+      
+      // Dispatch on document to ensure it reaches the page
+      document.dispatchEvent(extensionLoadedEvent);
+      
+      // Also dispatch on window as backup
+      window.dispatchEvent(new CustomEvent('aiExtensionWindowLoaded', {
+        detail: {
+          type: 'AI_EXTENSION_LOADED',
+          source: 'ai-form-assistant',
+          version: '2.0.0',
+          loaded: true,
+          timestamp: Date.now()
         }
-      };
+      }));
+      
+      console.log('✅ Extension presence marked via DOM attributes and events');
       
       // Set a marker in storage (with error handling)
       try {
@@ -358,7 +553,12 @@
   
   // Refresh global variable every 10 seconds (no messages, no storage calls)
   setInterval(() => {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    const isDevelopment = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1' ||
+                         window.location.port === '5173' ||
+                         window.location.port === '3000';
+                         
+    if (isDevelopment) {
       window.aiFormAssistantExtension = {
         version: '2.0.0',
         loaded: true,

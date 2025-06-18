@@ -44,17 +44,31 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     // Listen for extension messages (but only act on first one)
     const handleExtensionMessage = (event: MessageEvent) => {
       if (event.data?.type === 'AI_EXTENSION_LOADED' && event.data?.source === 'ai-form-assistant') {
-        console.log('🎉 Extension detected via message!', event.data);
+        console.log('🎉 Extension detected via postMessage!', event.data);
         if (!extensionDetectedOnce) {
           setExtensionInstalled(true);
           setExtensionDetectedOnce(true);
-          console.log('📱 Extension status updated via message');
+          console.log('📱 Extension status updated via postMessage');
+          checkExtensionAuthStatus();
+        }
+      }
+    };
+    
+    // Listen for custom events as backup
+    const handleExtensionEvent = (event: CustomEvent) => {
+      if (event.detail?.type === 'AI_EXTENSION_LOADED' && event.detail?.source === 'ai-form-assistant') {
+        console.log('🎉 Extension detected via custom event!', event.detail);
+        if (!extensionDetectedOnce) {
+          setExtensionInstalled(true);
+          setExtensionDetectedOnce(true);
+          console.log('📱 Extension status updated via custom event');
           checkExtensionAuthStatus();
         }
       }
     };
     
     window.addEventListener('message', handleExtensionMessage);
+    document.addEventListener('aiExtensionLoaded', handleExtensionEvent as EventListener);
     
     // Check periodically for extension (very infrequently to avoid loops)
     const intervalId = setInterval(() => {
@@ -69,6 +83,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     
     return () => {
       window.removeEventListener('message', handleExtensionMessage);
+      document.removeEventListener('aiExtensionLoaded', handleExtensionEvent as EventListener);
       clearInterval(intervalId);
     };
   }, [user]);
@@ -270,8 +285,32 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   };
 
     const checkExtensionStatus = () => {
-    // Check for our specific global variable
-    const hasGlobalVar = !!(window as any).aiFormAssistantExtension?.loaded;
+    // Method 1: Check DOM attributes set by content script (most reliable)
+    const extensionLoaded = document.documentElement.getAttribute('data-ai-extension-loaded') === 'true';
+    const extensionVersion = document.documentElement.getAttribute('data-ai-extension-version');
+    const extensionTimestamp = document.documentElement.getAttribute('data-ai-extension-timestamp');
+    
+    if (extensionLoaded && extensionVersion) {
+      if (!extensionInstalled) {
+        console.log('✅ Extension detected via DOM attributes', {
+          version: extensionVersion,
+          timestamp: extensionTimestamp
+        });
+        setExtensionInstalled(true);
+        setExtensionDetectedOnce(true);
+        console.log('🎉 Extension status set to installed');
+      }
+      checkExtensionAuthStatus();
+      return;
+    }
+    
+    // Method 2: Check for global variable in multiple contexts (fallback)
+    const windowVar = (window as any).aiFormAssistantExtension;
+    const documentVar = (document as any).aiFormAssistantExtension;
+    const parentVar = (window.parent as any)?.aiFormAssistantExtension;
+    const topVar = (window.top as any)?.aiFormAssistantExtension;
+    
+    const hasGlobalVar = !!(windowVar?.loaded || documentVar?.loaded || parentVar?.loaded || topVar?.loaded);
     
     if (hasGlobalVar) {
       if (!extensionInstalled) {
@@ -858,8 +897,65 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
             
                          <button
                onClick={() => {
-                 checkExtensionStatus();
-                 checkExtensionAuthStatus();
+                 console.log('🔄 Manual refresh clicked');
+                 console.log('Current state:', { extensionInstalled, extensionLoggedIn, extensionDetectedOnce });
+                 
+                 // Check for global variable in multiple contexts
+                 const windowVar = (window as any).aiFormAssistantExtension;
+                 const documentVar = (document as any).aiFormAssistantExtension;
+                 const parentVar = (window.parent as any)?.aiFormAssistantExtension;
+                 const topVar = (window.top as any)?.aiFormAssistantExtension;
+                 
+                 console.log('Global variable checks:', {
+                   window: windowVar,
+                   document: documentVar,
+                   parent: parentVar,
+                   top: topVar,
+                   currentURL: window.location.href,
+                   inFrame: window !== window.parent
+                 });
+                 
+                 // Force recheck regardless of previous state - check all contexts
+                 const hasGlobalVar = !!(windowVar?.loaded || documentVar?.loaded || parentVar?.loaded || topVar?.loaded);
+                 
+                 if (hasGlobalVar) {
+                   setExtensionInstalled(true);
+                   setExtensionDetectedOnce(true);
+                   console.log('✅ Manual detection successful via global variable');
+                   checkExtensionAuthStatus();
+                 } else {
+                   // Fallback: try chrome storage check
+                   if ((window as any).chrome?.storage) {
+                     console.log('🔍 Trying fallback chrome.storage check...');
+                     try {
+                       (window as any).chrome.storage.local.get(['extensionId'], (result: any) => {
+                         if (result.extensionId === 'ai-form-assistant') {
+                           console.log('✅ Manual detection successful via chrome.storage');
+                           setExtensionInstalled(true);
+                           setExtensionDetectedOnce(true);
+                           checkExtensionAuthStatus();
+                         } else {
+                           console.log('❌ Extension not found in storage');
+                         }
+                       });
+                     } catch (error) {
+                       console.log('❌ Chrome storage check failed:', error);
+                     }
+                   } else {
+                     console.log('❌ No global variable or chrome storage found');
+                   }
+                 }
+                 
+                 // Update message after all checks complete
+                 setTimeout(() => {
+                   const finalCheck = !!(window as any).aiFormAssistantExtension?.loaded || extensionInstalled;
+                   setActionStatus({
+                     type: finalCheck ? 'success' : 'error',
+                     message: finalCheck ? 
+                       '✅ Extension detected! Status updated.' : 
+                       '❌ Extension not detected. Make sure it\'s installed, enabled, and reload this page.'
+                   });
+                 }, 500);
                }}
                style={{
                  background: '#f3f4f6',
@@ -895,8 +991,26 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
                <br />• Click "Refresh Status" button
                <br />• Make sure you extracted the zip file properly
                <br />• Check that the extension shows as "Enabled" in chrome://extensions/
+               <br />• Open browser console (F12) and check for error messages
              </div>
            )}
+           
+           {/* Debug Section for Development */}
+           <details style={{ marginTop: '1rem', fontSize: '0.75rem', color: '#6b7280' }}>
+             <summary style={{ cursor: 'pointer', fontWeight: '500' }}>🔍 Debug Info (Click to expand)</summary>
+             <div style={{ marginTop: '0.5rem', fontFamily: 'monospace', background: '#f8fafc', padding: '0.5rem', borderRadius: '4px' }}>
+               <div>Extension Installed: {extensionInstalled ? '✅ Yes' : '❌ No'}</div>
+               <div>Extension Detected Once: {extensionDetectedOnce ? '✅ Yes' : '❌ No'}</div>
+               <div>Extension Logged In: {extensionLoggedIn ? '✅ Yes' : '❌ No'}</div>
+               <div>Global Variable (window): {(window as any).aiFormAssistantExtension?.loaded ? '✅ Present' : '❌ Missing'}</div>
+               <div>Global Variable (document): {(document as any).aiFormAssistantExtension?.loaded ? '✅ Present' : '❌ Missing'}</div>
+               <div>Global Variable (parent): {(window.parent as any)?.aiFormAssistantExtension?.loaded ? '✅ Present' : '❌ Missing'}</div>
+               <div>Global Variable (top): {(window.top as any)?.aiFormAssistantExtension?.loaded ? '✅ Present' : '❌ Missing'}</div>
+               <div>Chrome Runtime: {(window as any).chrome?.runtime ? '✅ Available' : '❌ Missing'}</div>
+               <div>In Frame: {window !== window.parent ? '✅ Yes' : '❌ No'}</div>
+               <div>Current URL: {window.location.href}</div>
+             </div>
+           </details>
            
            {/* Installation Instructions */}
            <div style={{ 
