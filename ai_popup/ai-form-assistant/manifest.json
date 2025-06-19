@@ -22,7 +22,7 @@
   "content_scripts": [
     {
       "matches": ["*://*/*"],
-      "js": ["content-script.js", "floating-popup.js"],
+      "js": ["content-script.js", "floating-popup.js", "auto-save-job-applications.js"],
       "run_at": "document_end"
     }
   ],

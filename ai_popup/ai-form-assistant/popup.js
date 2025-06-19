@@ -709,8 +709,21 @@ class PopupManager {
   }
 
   openUrlTracker() {
-    // Open URL tracker web app in new tab
-    chrome.tabs.create({ url: 'http://localhost:5173' });
+    try {
+      console.log('🔗 Opening URL Tracker...');
+      // Open URL tracker web app in new tab
+      chrome.tabs.create({ url: 'http://localhost:5173' }, (tab) => {
+        if (chrome.runtime.lastError) {
+          console.error('❌ Failed to open URL tracker:', chrome.runtime.lastError);
+          this.showError('Failed to open URL tracker. Please check if the web app is running.');
+        } else {
+          console.log('✅ URL tracker opened successfully');
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error opening URL tracker:', error);
+      this.showError('Failed to open URL tracker. Please try again.');
+    }
   }
 
   async loadUrlStats() {

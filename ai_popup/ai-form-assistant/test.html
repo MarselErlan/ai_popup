@@ -65,7 +65,7 @@
                 <p><strong>Location:</strong> San Francisco, CA</p>
                 <p><strong>Salary:</strong> $120k - $160k</p>
                 <p>We're looking for an experienced frontend developer to join our team...</p>
-                <button onclick="alert('This would normally take you to the application page')">Apply Now</button>
+                <button onclick="simulateJobApplication(this, 'Senior Frontend Developer - TechCorp')">Apply Now</button>
             </div>
 
             <div class="job-listing">
@@ -73,7 +73,7 @@
                 <p><strong>Location:</strong> Remote</p>
                 <p><strong>Salary:</strong> $100k - $140k</p>
                 <p>Join our fast-growing startup as a full stack engineer...</p>
-                <button onclick="alert('This would normally take you to the application page')">Apply Now</button>
+                <button onclick="simulateJobApplication(this, 'Full Stack Engineer - StartupXYZ')">Apply Now</button>
             </div>
 
             <div class="job-listing">
@@ -81,7 +81,7 @@
                 <p><strong>Location:</strong> Seattle, WA</p>
                 <p><strong>Salary:</strong> $140k - $180k</p>
                 <p>We're seeking a product manager to lead our mobile initiatives...</p>
-                <button onclick="alert('This would normally take you to the application page')">Apply Now</button>
+                <button onclick="simulateJobApplication(this, 'Product Manager - BigTech Inc')">Apply Now</button>
             </div>
         </div>
 
@@ -96,6 +96,8 @@
                 <li>✅ URL stats update after saving</li>
                 <li>✅ "Open URL Tracker" button opens the dashboard</li>
                 <li>✅ Popup closes when clicking outside</li>
+                <li>🆕 <strong>Auto-save:</strong> Click "Apply Now" buttons to test auto-save</li>
+                <li>🆕 <strong>Status update:</strong> URLs should be marked as "applied" automatically</li>
             </ul>
         </div>
 
@@ -105,6 +107,14 @@
             <p><strong>After Login:</strong> Should show dashboard with user info, URL tracker section, and document status</p>
             <p><strong>Save Current Page:</strong> Should save "Floating Popup Test Page" to the URL tracker</p>
             <p><strong>URL Stats:</strong> Should show "1 URL tracked" after saving</p>
+            <p><strong>🆕 Auto-save Job Applications:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>Click any "Apply Now" button</li>
+                <li>Should see green notification: "✅ Job application saved and marked as applied!"</li>
+                <li>URL should be automatically saved to tracker</li>
+                <li>Status should be set to "applied" with timestamp</li>
+                <li>URL stats should update to show applied count</li>
+            </ul>
         </div>
     </div>
 
@@ -123,6 +133,56 @@
                 console.log('❌ Floating button not found - check extension installation');
             }
         }, 1000);
+        
+        // Simulate job application submission
+        function simulateJobApplication(button, jobTitle) {
+            console.log('🎯 Simulating job application for:', jobTitle);
+            
+            // Change button text to show processing
+            const originalText = button.textContent;
+            button.textContent = 'Applying...';
+            button.disabled = true;
+            
+            // Simulate application process
+            setTimeout(() => {
+                button.textContent = 'Applied ✅';
+                button.style.background = '#10b981';
+                
+                // Show success message
+                const successDiv = document.createElement('div');
+                successDiv.style.cssText = `
+                    position: fixed;
+                    top: 80px;
+                    right: 20px;
+                    background: #10b981;
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    font-weight: 500;
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+                    z-index: 999999;
+                `;
+                successDiv.textContent = `✅ Applied to ${jobTitle}!`;
+                document.body.appendChild(successDiv);
+                
+                // Remove success message after 3 seconds
+                setTimeout(() => {
+                    if (successDiv.parentNode) {
+                        successDiv.parentNode.removeChild(successDiv);
+                    }
+                }, 3000);
+                
+                console.log('✅ Job application simulation complete');
+                
+                // Reset button after 5 seconds
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.disabled = false;
+                    button.style.background = '#007cba';
+                }, 5000);
+                
+            }, 2000); // 2 second delay to simulate processing
+        }
     </script>
 </body>
 </html> 
