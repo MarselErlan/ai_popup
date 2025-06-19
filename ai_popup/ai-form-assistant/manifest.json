@@ -22,7 +22,7 @@
   "content_scripts": [
     {
       "matches": ["*://*/*"],
-      "js": ["content-script.js"],
+      "js": ["content-script.js", "floating-button.js"],
       "run_at": "document_end"
     }
   ],

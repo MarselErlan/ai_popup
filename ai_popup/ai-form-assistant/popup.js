@@ -437,6 +437,21 @@ class PopupManager {
         this.showLogin();
       });
     }
+
+    // URL Tracker buttons
+    const saveCurrentPageBtn = document.getElementById('saveCurrentPageBtn');
+    if (saveCurrentPageBtn) {
+      saveCurrentPageBtn.addEventListener('click', async () => {
+        await this.saveCurrentPage();
+      });
+    }
+
+    const openUrlTrackerBtn = document.getElementById('openUrlTrackerBtn');
+    if (openUrlTrackerBtn) {
+      openUrlTrackerBtn.addEventListener('click', () => {
+        this.openUrlTracker();
+      });
+    }
   }
 
   async handleLogin(email, password) {
@@ -608,6 +623,7 @@ class PopupManager {
     // Load user info and document status
     this.loadUserInfo();
     this.checkDocumentStatus();
+    this.loadUrlStats();
   }
 
   async loadUserInfo() {
@@ -635,6 +651,98 @@ class PopupManager {
       setTimeout(() => {
         messageDiv.classList.add('hidden');
       }, 5000);
+    }
+  }
+
+  // URL Tracker Methods
+  async saveCurrentPage() {
+    const saveBtn = document.getElementById('saveCurrentPageBtn');
+    const originalText = saveBtn.textContent;
+    
+    try {
+      saveBtn.innerHTML = '<div class="loading"></div> Saving...';
+      saveBtn.disabled = true;
+
+      // Get current active tab
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tabs || tabs.length === 0) {
+        throw new Error('No active tab found');
+      }
+
+      const currentTab = tabs[0];
+      const sessionId = await this.getStoredSessionId();
+      
+      if (!sessionId) {
+        throw new Error('Not authenticated. Please login first.');
+      }
+
+      // Save URL via API
+      const response = await fetch(`${this.API_BASE_URL}/api/urls/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': sessionId
+        },
+        body: JSON.stringify({
+          url: currentTab.url,
+          title: currentTab.title
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        this.showError(`✅ ${result.message || 'URL saved successfully!'}`, 'successMessage');
+        // Refresh URL stats
+        this.loadUrlStats();
+      } else {
+        throw new Error(result.detail || 'Failed to save URL');
+      }
+
+    } catch (error) {
+      console.error('Failed to save URL:', error);
+      this.showError(`❌ ${error.message}`);
+    } finally {
+      saveBtn.textContent = originalText;
+      saveBtn.disabled = false;
+    }
+  }
+
+  openUrlTracker() {
+    // Open URL tracker web app in new tab
+    chrome.tabs.create({ url: 'http://localhost:5173' });
+  }
+
+  async loadUrlStats() {
+    try {
+      const sessionId = await this.getStoredSessionId();
+      if (!sessionId) return;
+
+      const response = await fetch(`${this.API_BASE_URL}/api/urls/stats/summary`, {
+        headers: {
+          'Authorization': sessionId,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const stats = data.stats;
+        
+        const urlStatsDiv = document.getElementById('urlStats');
+        if (urlStatsDiv) {
+          urlStatsDiv.innerHTML = `
+            📊 <strong>${stats.total_urls}</strong> URLs tracked<br>
+            ✅ <strong>${stats.applied}</strong> applied • 
+            ⏳ <strong>${stats.in_progress}</strong> in progress • 
+            📝 <strong>${stats.not_applied}</strong> pending
+          `;
+        }
+      } else {
+        console.error('Failed to load URL stats:', response.status);
+      }
+    } catch (error) {
+      console.error('Error loading URL stats:', error);
     }
   }
 }
