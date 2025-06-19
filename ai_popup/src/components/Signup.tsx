@@ -6,7 +6,7 @@ interface SignupProps {
   onSwitchToLogin: () => void;
 }
 
-const Signup = ({ onSignup, onSwitchToLogin }: SignupProps) => {
+const Signup = ({ onSignup: _onSignup, onSwitchToLogin }: SignupProps) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',

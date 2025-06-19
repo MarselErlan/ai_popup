@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { authService } from '../services/authService';
+import UrlTracker from './UrlTracker';
 
 interface User {
   id: string;
@@ -17,6 +18,7 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ user, onLogout }: DashboardProps) => {
+  const [activeTab, setActiveTab] = useState<'documents' | 'urls'>('documents');
   const [resumeLoading, setResumeLoading] = useState(false);
   const [personalInfoLoading, setPersonalInfoLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -528,8 +530,57 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
         </button>
       </header>
 
+      {/* Tab Navigation */}
+      <nav style={{
+        borderBottom: '1px solid #e5e7eb',
+        backgroundColor: 'white',
+        padding: '0 2rem'
+      }}>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          display: 'flex',
+          gap: '2rem'
+        }}>
+          <button
+            onClick={() => setActiveTab('documents')}
+            style={{
+              padding: '1rem 0',
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: '500',
+              color: activeTab === 'documents' ? '#3b82f6' : '#6b7280',
+              borderBottom: activeTab === 'documents' ? '2px solid #3b82f6' : '2px solid transparent',
+              transition: 'all 0.2s'
+            }}
+          >
+            📄 Documents & Setup
+          </button>
+          <button
+            onClick={() => setActiveTab('urls')}
+            style={{
+              padding: '1rem 0',
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: '500',
+              color: activeTab === 'urls' ? '#3b82f6' : '#6b7280',
+              borderBottom: activeTab === 'urls' ? '2px solid #3b82f6' : '2px solid transparent',
+              transition: 'all 0.2s'
+            }}
+          >
+            🔗 URL Tracker
+          </button>
+        </div>
+      </nav>
+
       <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Status Message */}
+        {activeTab === 'documents' && (
+          <>
+            {/* Status Message */}
         {actionStatus && (
           <div style={{
             padding: '1rem',
@@ -1231,6 +1282,12 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
             )}
           </div>
         </section>
+          </>
+        )}
+
+        {activeTab === 'urls' && (
+          <UrlTracker />
+        )}
       </main>
     </div>
   );
