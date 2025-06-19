@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floating Popup Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .job-listing {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005a8b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Floating Popup Test Page</h1>
+        <p>This page is for testing the AI Form Assistant floating popup functionality.</p>
+        
+        <div class="test-section">
+            <h2>Instructions:</h2>
+            <ol>
+                <li>Load this page in Chrome with the AI Form Assistant extension installed</li>
+                <li>Look for the 🤖 floating button in the top-right corner</li>
+                <li>Click the floating button to open the popup</li>
+                <li>Test login functionality with: <strong>test@example.com</strong> / <strong>testpassword123</strong></li>
+                <li>Test the "Save Current Page" button</li>
+                <li>Check the URL stats and dashboard</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 Mock Job Listings (for testing)</h2>
+            
+            <div class="job-listing">
+                <h3>Senior Frontend Developer - TechCorp</h3>
+                <p><strong>Location:</strong> San Francisco, CA</p>
+                <p><strong>Salary:</strong> $120k - $160k</p>
+                <p>We're looking for an experienced frontend developer to join our team...</p>
+                <button onclick="alert('This would normally take you to the application page')">Apply Now</button>
+            </div>
+
+            <div class="job-listing">
+                <h3>Full Stack Engineer - StartupXYZ</h3>
+                <p><strong>Location:</strong> Remote</p>
+                <p><strong>Salary:</strong> $100k - $140k</p>
+                <p>Join our fast-growing startup as a full stack engineer...</p>
+                <button onclick="alert('This would normally take you to the application page')">Apply Now</button>
+            </div>
+
+            <div class="job-listing">
+                <h3>Product Manager - BigTech Inc</h3>
+                <p><strong>Location:</strong> Seattle, WA</p>
+                <p><strong>Salary:</strong> $140k - $180k</p>
+                <p>We're seeking a product manager to lead our mobile initiatives...</p>
+                <button onclick="alert('This would normally take you to the application page')">Apply Now</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔧 Testing Checklist:</h2>
+            <ul>
+                <li>✅ Floating button appears on page load</li>
+                <li>✅ Popup opens when clicking the floating button</li>
+                <li>✅ Login form works with test credentials</li>
+                <li>✅ Dashboard shows after successful login</li>
+                <li>✅ "Save Current Page" button saves this test page</li>
+                <li>✅ URL stats update after saving</li>
+                <li>✅ "Open URL Tracker" button opens the dashboard</li>
+                <li>✅ Popup closes when clicking outside</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>📝 Expected Behavior:</h2>
+            <p><strong>Before Login:</strong> Should show login form</p>
+            <p><strong>After Login:</strong> Should show dashboard with user info, URL tracker section, and document status</p>
+            <p><strong>Save Current Page:</strong> Should save "Floating Popup Test Page" to the URL tracker</p>
+            <p><strong>URL Stats:</strong> Should show "1 URL tracked" after saving</p>
+        </div>
+    </div>
+
+    <script>
+        // Simple script to test page functionality
+        console.log('🧪 Floating Popup Test Page Loaded');
+        console.log('Page URL:', window.location.href);
+        console.log('Page Title:', document.title);
+        
+        // Check if floating popup is injected
+        setTimeout(() => {
+            const floatingButton = document.getElementById('ai-floating-trigger');
+            if (floatingButton) {
+                console.log('✅ Floating button found!');
+            } else {
+                console.log('❌ Floating button not found - check extension installation');
+            }
+        }, 1000);
+    </script>
+</body>
+</html> 
