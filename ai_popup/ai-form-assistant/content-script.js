@@ -79,14 +79,14 @@
     currentInput.disabled = true;
 
     try {
-      // Get authentication data from extension storage
-      const authData = await getAuthenticationData();
+      // Get authentication data with web app sync
+      const authData = await syncWithWebApp();
       
       if (!authData.sessionId || !authData.userId) {
-        currentInput.value = "🔐 Please login through the extension popup first";
+        currentInput.value = "🔐 Please login through the extension popup or web app first";
         currentInput.disabled = false;
         aiButton.style.display = 'none';
-        console.log("❌ Authentication required - user must login through extension");
+        console.log("❌ Authentication required - user must login through extension or web app");
         return;
       }
 
@@ -123,7 +123,7 @@
           if (refreshed) {
             console.log("✅ Session refreshed successfully, retrying request...");
             // Retry the request with fresh session
-            const newAuthData = await getAuthenticationData();
+            const newAuthData = await syncWithWebApp();
             if (newAuthData.sessionId) {
                              // Retry the API call
                const retryResponse = await fetch(`${API_BASE_URL}/api/generate-field-answer`, {
@@ -199,13 +199,89 @@
             userId: result.userId ? '✅ Found' : '❌ Missing',
             email: result.email ? '✅ Found' : '❌ Missing'
           });
-          resolve(result);
+          
+          resolve({
+            sessionId: result.sessionId,
+            userId: result.userId,
+            email: result.email
+          });
         });
       } catch (error) {
-        console.warn("⚠️ Extension context error:", error);
+        console.error("🚨 Error getting auth data:", error);
         resolve({});
       }
     });
+  }
+
+  // NEW: Sync session with web app
+  async function syncWithWebApp() {
+    console.log("🔄 Attempting to sync session with web app...");
+    
+    try {
+      // Check if we're on the web app domain
+      if (window.location.origin === 'http://localhost:5173') {
+        console.log("📍 On web app domain, checking for session...");
+        
+        // Try to get session from web app's localStorage
+        const webAppSession = localStorage.getItem('sessionId');
+        const webAppUserId = localStorage.getItem('userId');
+        const webAppEmail = localStorage.getItem('email');
+        
+        if (webAppSession && webAppUserId) {
+          console.log("✅ Found web app session, syncing to extension...");
+          
+          // Store in extension storage
+          chrome.storage.local.set({
+            sessionId: webAppSession,
+            userId: webAppUserId,
+            email: webAppEmail
+          }, () => {
+            console.log("✅ Session synced to extension storage");
+          });
+          
+          return {
+            sessionId: webAppSession,
+            userId: webAppUserId,
+            email: webAppEmail
+          };
+        }
+      }
+      
+      // If not on web app or no web app session, use extension session
+      return await getAuthenticationData();
+      
+    } catch (error) {
+      console.error("❌ Error syncing with web app:", error);
+      return await getAuthenticationData();
+    }
+  }
+
+  // NEW: Listen for web app login events
+  function setupWebAppSync() {
+    // Listen for storage events (when web app updates localStorage)
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'sessionId' && event.newValue) {
+        console.log("🔄 Web app session detected, syncing...");
+        syncWithWebApp();
+      }
+    });
+    
+    // Listen for custom events from web app
+    window.addEventListener('webAppLogin', (event) => {
+      console.log("🔄 Web app login event received:", event.detail);
+      if (event.detail && event.detail.sessionId) {
+        chrome.storage.local.set({
+          sessionId: event.detail.sessionId,
+          userId: event.detail.userId,
+          email: event.detail.email
+        }, () => {
+          console.log("✅ Session synced from web app event");
+        });
+      }
+    });
+    
+    // Initial sync check
+    syncWithWebApp();
   }
 
   // Refresh session from web app
@@ -686,6 +762,9 @@
   setInterval(() => {
     updateGlobalAuthStatus();
   }, 10000);
+
+  // NEW: Listen for web app login events
+  setupWebAppSync();
 
   console.log("🎯 AI Form Assistant content script loaded and ready");
 })();
