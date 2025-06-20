@@ -138,7 +138,7 @@
               if (retryResponse.ok) {
                 const retryData = await retryResponse.json();
                 if (retryData.answer) {
-                  currentInput.value = retryData.answer;
+                  currentInput.value = (originalValue ? originalValue + ' ' : '') + retryData.answer;
                   console.log("✅ AI Response (after refresh):", {
                     question: fieldData.label,
                     answer: retryData.answer,
@@ -163,7 +163,7 @@
       const data = await response.json();
       
       if (data.answer) {
-        currentInput.value = data.answer;
+        currentInput.value = (originalValue ? originalValue + ' ' : '') + data.answer;
         console.log("✅ AI Response:", {
           question: fieldData.label,
           answer: data.answer,
