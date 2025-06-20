@@ -296,45 +296,7 @@ class UnifiedPopupManager {
     }
   }
 
-  async testSession() {
-    try {
-      console.log('🧪 Testing current session...');
-      
-      // Get stored session data
-      const result = await chrome.storage.local.get(['sessionId', 'userId', 'email']);
-      console.log('🔍 Stored session data:', result);
-      
-      if (!result.sessionId) {
-        console.error('❌ No session ID found in storage');
-        this.showError('No session found. Please login again.');
-        return;
-      }
-      
-      // Test session validation
-      const response = await fetch(`${this.API_BASE_URL}/api/session/current/${result.sessionId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('🧪 Session validation response:', response.status);
-      
-      if (response.ok) {
-        const sessionData = await response.json();
-        console.log('✅ Session is valid:', sessionData);
-        this.showError('✅ Session is valid and working!', 'successMessage');
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Session validation failed:', response.status, errorText);
-        this.showError(`Session validation failed: ${response.status}`);
-      }
-      
-    } catch (error) {
-      console.error('❌ Session test error:', error);
-      this.showError(`Session test failed: ${error.message}`);
-    }
-  }
+
 
   async clearStoredData() {
     return new Promise((resolve) => {
@@ -388,13 +350,7 @@ class UnifiedPopupManager {
       });
     }
 
-    // Test session button
-    const testSessionBtn = document.getElementById('testSessionBtn');
-    if (testSessionBtn) {
-      testSessionBtn.addEventListener('click', async () => {
-        await this.testSession();
-      });
-    }
+
 
     // Logout button
     const logoutBtn = document.getElementById('logoutBtn');
@@ -687,7 +643,7 @@ class UnifiedPopupManager {
       }
 
       // Save URL via API
-      const response = await fetch(`${this.API_BASE_URL}/api/urls/save`, {
+      const response = await fetch(`${this.API_BASE_URL}/api/v1/url-tracking/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -741,7 +697,7 @@ class UnifiedPopupManager {
       const sessionId = await this.getStoredSessionId();
       if (!sessionId) return;
 
-      const response = await fetch(`${this.API_BASE_URL}/api/urls/stats/summary`, {
+      const response = await fetch(`${this.API_BASE_URL}/api/v1/url-tracking/stats`, {
         headers: {
           'Authorization': sessionId,
           'Content-Type': 'application/json'
@@ -750,16 +706,11 @@ class UnifiedPopupManager {
 
       if (response.ok) {
         const data = await response.json();
-        const stats = data.stats;
+        console.log('📊 URL stats data:', data);
         
         const urlStatsDiv = document.getElementById('urlStats');
         if (urlStatsDiv) {
-          urlStatsDiv.innerHTML = `
-            📊 <strong>${stats.total_urls}</strong> URLs tracked<br>
-            ✅ <strong>${stats.applied}</strong> applied • 
-            ⏳ <strong>${stats.in_progress}</strong> in progress • 
-            📝 <strong>${stats.not_applied}</strong> pending
-          `;
+          urlStatsDiv.textContent = `📊 Tracked: ${data.total_urls || 0} URLs`;
         }
       } else {
         console.error('Failed to load URL stats:', response.status);

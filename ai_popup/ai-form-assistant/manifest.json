@@ -30,7 +30,7 @@
   "content_scripts": [
     {
       "matches": ["*://*/*"],
-      "js": ["content-script.js", "floating-popup.js", "auto-save-job-applications.js"],
+      "js": ["content-script.js", "popup-unified.js", "auto-save-job-applications.js"],
       "run_at": "document_end"
     }
   ],
@@ -42,7 +42,7 @@
   
   "web_accessible_resources": [
     {
-      "resources": ["ai_popup.png"],
+      "resources": ["ai_popup.png", "popup.html", "popup-unified.js"],
       "matches": ["*://*/*"]
     }
   ],
