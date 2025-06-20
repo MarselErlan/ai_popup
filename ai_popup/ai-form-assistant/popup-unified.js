@@ -517,10 +517,14 @@ class UnifiedPopupManager {
 
   async handleLogout() {
     try {
+      console.log('🚪 Starting logout process...');
       await this.logout();
+      console.log('✅ Logout successful, showing login screen');
       this.showLogin();
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('❌ Logout failed:', error);
+      // Show login anyway to reset the UI
+      this.showLogin();
     }
   }
 
@@ -586,10 +590,44 @@ class UnifiedPopupManager {
     if (dashboardView) dashboardView.classList.remove('hidden');
     if (signupView) signupView.classList.add('hidden');
 
+    // Setup dashboard-specific event listeners
+    this.setupDashboardEventListeners();
+
     // Load user info and document status
     this.loadUserInfo();
     this.checkDocumentStatus();
     this.loadUrlStats();
+  }
+
+  setupDashboardEventListeners() {
+    // Logout button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.removeEventListener('click', this.handleLogout); // Remove any existing listener
+      logoutBtn.addEventListener('click', async () => {
+        console.log('🚪 Logout button clicked');
+        await this.handleLogout();
+      });
+    }
+
+    // URL Tracker buttons
+    const saveCurrentPageBtn = document.getElementById('saveCurrentPageBtn');
+    if (saveCurrentPageBtn) {
+      saveCurrentPageBtn.removeEventListener('click', this.saveCurrentPage);
+      saveCurrentPageBtn.addEventListener('click', async () => {
+        console.log('💾 Save current page button clicked');
+        await this.saveCurrentPage();
+      });
+    }
+
+    const openUrlTrackerBtn = document.getElementById('openUrlTrackerBtn');
+    if (openUrlTrackerBtn) {
+      openUrlTrackerBtn.removeEventListener('click', this.openUrlTracker);
+      openUrlTrackerBtn.addEventListener('click', () => {
+        console.log('🔗 Open URL tracker button clicked');
+        this.openUrlTracker();
+      });
+    }
   }
 
   async loadUserInfo() {
@@ -623,9 +661,15 @@ class UnifiedPopupManager {
   // URL Tracker Methods
   async saveCurrentPage() {
     const saveBtn = document.getElementById('saveCurrentPageBtn');
+    if (!saveBtn) {
+      console.error('❌ Save button not found');
+      return;
+    }
+    
     const originalText = saveBtn.textContent;
     
     try {
+      console.log('💾 Saving current page...');
       saveBtn.innerHTML = '<div class="loading"></div> Saving...';
       saveBtn.disabled = true;
 
@@ -643,7 +687,7 @@ class UnifiedPopupManager {
       }
 
       // Save URL via API
-      const response = await fetch(`${this.API_BASE_URL}/api/v1/url-tracking/save`, {
+      const response = await fetch(`${this.API_BASE_URL}/api/urls/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -677,6 +721,14 @@ class UnifiedPopupManager {
   openUrlTracker() {
     try {
       console.log('🔗 Opening URL Tracker...');
+      
+      // Check if chrome.tabs is available
+      if (!chrome.tabs) {
+        console.error('❌ Chrome tabs API not available');
+        this.showError('Cannot open URL tracker. Extension permissions issue.');
+        return;
+      }
+      
       // Open URL tracker web app in new tab
       chrome.tabs.create({ url: 'http://localhost:5173' }, (tab) => {
         if (chrome.runtime.lastError) {
@@ -697,7 +749,7 @@ class UnifiedPopupManager {
       const sessionId = await this.getStoredSessionId();
       if (!sessionId) return;
 
-      const response = await fetch(`${this.API_BASE_URL}/api/v1/url-tracking/stats`, {
+      const response = await fetch(`${this.API_BASE_URL}/api/urls/stats/summary`, {
         headers: {
           'Authorization': sessionId,
           'Content-Type': 'application/json'
@@ -709,8 +761,16 @@ class UnifiedPopupManager {
         console.log('📊 URL stats data:', data);
         
         const urlStatsDiv = document.getElementById('urlStats');
-        if (urlStatsDiv) {
-          urlStatsDiv.textContent = `📊 Tracked: ${data.total_urls || 0} URLs`;
+        if (urlStatsDiv && data.stats) {
+          const stats = data.stats;
+          urlStatsDiv.innerHTML = `
+            📊 <strong>${stats.total_urls}</strong> URLs tracked<br>
+            ✅ <strong>${stats.applied}</strong> applied • 
+            ⏳ <strong>${stats.in_progress}</strong> in progress • 
+            📝 <strong>${stats.not_applied}</strong> pending
+          `;
+        } else if (urlStatsDiv) {
+          urlStatsDiv.textContent = `📊 Tracked: 0 URLs`;
         }
       } else {
         console.error('Failed to load URL stats:', response.status);

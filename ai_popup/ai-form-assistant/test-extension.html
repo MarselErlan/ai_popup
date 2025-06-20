@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 AI Form Assistant Extension Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .test-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .test-card h3 {
+            color: #374151;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .test-card h3 .emoji {
+            font-size: 1.2em;
+        }
+
+        .test-section {
+            margin-bottom: 20px;
+        }
+
+        .test-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .test-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 5px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .test-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .test-btn.secondary {
+            background: #6b7280;
+        }
+
+        .test-btn.success {
+            background: #10b981;
+        }
+
+        .test-btn.danger {
+            background: #ef4444;
+        }
+
+        .test-result {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        .test-result.success {
+            background: #f0fdf4;
+            color: #166534;
+            border-left: 4px solid #10b981;
+        }
+
+        .test-result.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border-left: 4px solid #ef4444;
+        }
+
+        .test-result.info {
+            background: #f0f9ff;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .form-test {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .form-test h4 {
+            color: #374151;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.green {
+            background: #10b981;
+        }
+
+        .status-indicator.red {
+            background: #ef4444;
+        }
+
+        .status-indicator.yellow {
+            background: #f59e0b;
+        }
+
+        .logs {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+
+        .clear-logs {
+            background: #374151;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .extension-status {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .extension-status.detected {
+            border-left: 4px solid #10b981;
+        }
+
+        .extension-status.not-detected {
+            border-left: 4px solid #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 AI Form Assistant Extension Tester</h1>
+            <p>Comprehensive testing suite for the browser extension</p>
+        </div>
+
+        <!-- Extension Status -->
+        <div id="extensionStatus" class="extension-status not-detected">
+            <h3>🔍 Extension Detection</h3>
+            <p id="extensionStatusText">Checking for extension...</p>
+        </div>
+
+        <!-- Test Grid -->
+        <div class="test-grid">
+            <!-- Backend API Tests -->
+            <div class="test-card">
+                <h3><span class="emoji">🔧</span> Backend API Tests</h3>
+                
+                <div class="test-section">
+                    <button class="test-btn" onclick="testApiHealth()">🏥 Test API Health</button>
+                    <button class="test-btn" onclick="testUserRegistration()">👤 Test Registration</button>
+                    <button class="test-btn" onclick="testSessionCreation()">🔐 Test Session</button>
+                    <div id="apiTestResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Extension Popup Tests -->
+            <div class="test-card">
+                <h3><span class="emoji">🎯</span> Extension Popup Tests</h3>
+                
+                <div class="test-section">
+                    <button class="test-btn" onclick="testSaveCurrentPage()">💾 Test Save Page</button>
+                    <button class="test-btn" onclick="testUrlStats()">📊 Test URL Stats</button>
+                    <button class="test-btn" onclick="testOpenUrlTracker()">🔗 Test Open Tracker</button>
+                    <div id="extensionTestResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- URL Tracking Tests -->
+            <div class="test-card">
+                <h3><span class="emoji">🔗</span> URL Tracking Tests</h3>
+                
+                <div class="test-section">
+                    <button class="test-btn" onclick="testUrlSaving()">💾 Test URL Saving</button>
+                    <button class="test-btn" onclick="testUrlRetrieval()">📋 Test URL Retrieval</button>
+                    <button class="test-btn" onclick="testUrlStats()">📈 Test URL Statistics</button>
+                    <div id="urlTestResult" class="test-result" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Form Filling Tests -->
+            <div class="test-card">
+                <h3><span class="emoji">📝</span> Form Filling Tests</h3>
+                
+                <div class="test-section">
+                    <button class="test-btn" onclick="testFormFilling()">🤖 Test AI Form Filling</button>
+                    <button class="test-btn" onclick="testContentScript()">📄 Test Content Script</button>
+                    <div id="formTestResult" class="test-result" style="display: none;"></div>
+                </div>
+
+                <!-- Sample Form -->
+                <div class="form-test">
+                    <h4>🧪 Test Form (Click fields to test AI filling)</h4>
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" placeholder="Enter your full name" id="testFullName">
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" placeholder="Enter your email" id="testEmail">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" placeholder="Enter your phone" id="testPhone">
+                    </div>
+                    <div class="form-group">
+                        <label>Current Position</label>
+                        <input type="text" placeholder="Enter your current job title" id="testPosition">
+                    </div>
+                    <div class="form-group">
+                        <label>Years of Experience</label>
+                        <select id="testExperience">
+                            <option value="">Select experience level</option>
+                            <option value="0-1">0-1 years</option>
+                            <option value="2-3">2-3 years</option>
+                            <option value="4-5">4-5 years</option>
+                            <option value="5+">5+ years</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cover Letter</label>
+                        <textarea placeholder="Write your cover letter" rows="4" id="testCoverLetter"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Section -->
+        <div class="test-card">
+            <h3><span class="emoji">📋</span> Test Logs</h3>
+            <button class="clear-logs" onclick="clearLogs()">Clear Logs</button>
+            <div id="testLogs" class="logs"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        let testSessionId = null;
+        let testUserId = null;
+
+        // Logging function
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('testLogs');
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearLogs() {
+            document.getElementById('testLogs').textContent = '';
+        }
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `test-result ${type}`;
+            element.style.display = 'block';
+            log(message, type);
+        }
+
+        // Check if extension is installed
+        function checkExtensionStatus() {
+            const statusDiv = document.getElementById('extensionStatus');
+            const statusText = document.getElementById('extensionStatusText');
+
+            // Try to detect extension by checking for injected content script
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+                try {
+                    chrome.runtime.sendMessage('your-extension-id', {action: 'ping'}, (response) => {
+                        if (chrome.runtime.lastError) {
+                            statusDiv.className = 'extension-status not-detected';
+                            statusText.textContent = '❌ Extension not detected or not communicating';
+                            log('Extension not detected', 'error');
+                        } else {
+                            statusDiv.className = 'extension-status detected';
+                            statusText.textContent = '✅ Extension detected and active';
+                            log('Extension detected successfully', 'success');
+                        }
+                    });
+                } catch (error) {
+                    statusDiv.className = 'extension-status not-detected';
+                    statusText.textContent = '❌ Extension not installed';
+                    log('Extension not installed', 'error');
+                }
+            } else {
+                statusDiv.className = 'extension-status not-detected';
+                statusText.textContent = '❌ Chrome extension APIs not available';
+                log('Chrome extension APIs not available', 'error');
+            }
+        }
+
+        // Backend API Tests
+        async function testApiHealth() {
+            log('Testing API health...');
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('apiTestResult', `✅ API Health: ${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('apiTestResult', `❌ API Health Check Failed: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showResult('apiTestResult', `❌ API Connection Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUserRegistration() {
+            log('Testing user registration...');
+            const testEmail = `test_${Date.now()}@example.com`;
+            const testPassword = 'password123';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/simple/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: testEmail, password: testPassword })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    testUserId = data.user_id;
+                    showResult('apiTestResult', `✅ Registration Success: User ID: ${data.user_id}`, 'success');
+                } else {
+                    showResult('apiTestResult', `❌ Registration Failed: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                showResult('apiTestResult', `❌ Registration Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSessionCreation() {
+            log('Testing session creation...');
+            if (!testUserId) {
+                showResult('apiTestResult', '❌ Please run registration test first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/session/check-and-update/${testUserId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    testSessionId = data.session_id;
+                    showResult('apiTestResult', `✅ Session Created: ${data.session_id}`, 'success');
+                } else {
+                    showResult('apiTestResult', `❌ Session Creation Failed: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                showResult('apiTestResult', `❌ Session Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Extension Tests
+        async function testSaveCurrentPage() {
+            log('Testing save current page...');
+            
+            if (!testSessionId) {
+                showResult('extensionTestResult', '❌ Please run session creation test first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/urls/save`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': testSessionId
+                    },
+                    body: JSON.stringify({
+                        url: window.location.href,
+                        title: document.title
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showResult('extensionTestResult', `✅ Page Saved: ${data.message}`, 'success');
+                } else {
+                    showResult('extensionTestResult', `❌ Save Failed: ${data.detail || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult('extensionTestResult', `❌ Save Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testUrlStats() {
+            log('Testing URL statistics...');
+            
+            if (!testSessionId) {
+                showResult('extensionTestResult', '❌ Please run session creation test first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/urls/stats/summary`, {
+                    headers: {
+                        'Authorization': testSessionId,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    const stats = data.stats;
+                    const statsText = `Total: ${stats.total_urls}, Applied: ${stats.applied}, In Progress: ${stats.in_progress}, Not Applied: ${stats.not_applied}`;
+                    showResult('extensionTestResult', `✅ URL Stats: ${statsText}`, 'success');
+                } else {
+                    showResult('extensionTestResult', `❌ Stats Failed: ${data.detail || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult('extensionTestResult', `❌ Stats Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testOpenUrlTracker() {
+            log('Testing open URL tracker...');
+            try {
+                window.open('http://localhost:5173', '_blank');
+                showResult('extensionTestResult', '✅ URL Tracker opened in new tab', 'success');
+            } catch (error) {
+                showResult('extensionTestResult', `❌ Failed to open URL tracker: ${error.message}`, 'error');
+            }
+        }
+
+        // URL Tracking Tests
+        async function testUrlSaving() {
+            await testSaveCurrentPage(); // Reuse the same functionality
+        }
+
+        async function testUrlRetrieval() {
+            log('Testing URL retrieval...');
+            
+            if (!testSessionId) {
+                showResult('urlTestResult', '❌ Please run API login test first to get session', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/urls/list`, {
+                    headers: {
+                        'Authorization': testSessionId,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showResult('urlTestResult', `✅ URLs Retrieved: ${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    showResult('urlTestResult', `❌ Retrieval Failed: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                showResult('urlTestResult', `❌ Retrieval Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Form Filling Tests
+        async function testFormFilling() {
+            log('Testing AI form filling...');
+            
+            if (!testUserId) {
+                showResult('formTestResult', '❌ Please run registration test first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/generate-field-answer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        label: 'Full Name',
+                        url: window.location.href,
+                        user_id: testUserId
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showResult('formTestResult', `✅ Form Filling: ${data.answer}`, 'success');
+                    document.getElementById('testFullName').value = data.answer;
+                } else {
+                    showResult('formTestResult', `❌ Form Filling Failed: ${data.detail || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showResult('formTestResult', `❌ Form Filling Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testContentScript() {
+            log('Testing content script integration...');
+            showResult('formTestResult', '🔄 Content script test: Try clicking on the form fields above. They should auto-fill if the extension is working.', 'info');
+        }
+
+        // Initialize tests
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Extension Tester Initialized');
+            checkExtensionStatus();
+            
+            // Add event listeners to form fields for testing
+            const testFields = ['testFullName', 'testEmail', 'testPhone', 'testPosition', 'testExperience', 'testCoverLetter'];
+            testFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.addEventListener('focus', () => {
+                        log(`📝 Field focused: ${fieldId}`);
+                    });
+                    
+                    field.addEventListener('input', () => {
+                        if (field.value) {
+                            log(`✅ Field filled: ${fieldId} = "${field.value}"`);
+                        }
+                    });
+                }
+            });
+        });
+
+        // Auto-run basic tests
+        setTimeout(() => {
+            log('🔄 Running automatic health check...');
+            testApiHealth();
+        }, 1000);
+    </script>
+</body>
+</html> 
+</html> 
