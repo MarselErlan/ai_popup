@@ -127,6 +127,98 @@
   };
 
   /**
+   * Auto-detect and sync from web app login response
+   */
+  window.autoSyncFromLogin = function(loginResponse) {
+    console.log('🔄 Auto-sync from login response:', loginResponse);
+    
+    // Try to extract session data from various response formats
+    let sessionData = {};
+    
+    if (loginResponse) {
+      // Common response patterns
+      sessionData.sessionId = loginResponse.sessionId || 
+                              loginResponse.session_id || 
+                              loginResponse.token ||
+                              loginResponse.accessToken ||
+                              loginResponse.auth_token;
+                              
+      sessionData.userId = loginResponse.userId || 
+                          loginResponse.user_id || 
+                          loginResponse.id ||
+                          loginResponse.user?.id ||
+                          loginResponse.user?.user_id;
+                          
+      sessionData.email = loginResponse.email || 
+                         loginResponse.user?.email ||
+                         loginResponse.userEmail;
+    }
+    
+    if (sessionData.sessionId && sessionData.userId) {
+      console.log('✅ Extracted session data from login response');
+      window.syncSessionWithExtension(sessionData);
+      return true;
+    } else {
+      console.log('⚠️ Could not extract session data from login response');
+      return false;
+    }
+  };
+
+  /**
+   * Hook into common AJAX/fetch patterns to auto-detect login
+   */
+  function setupAutoDetection() {
+    // Hook into fetch API
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+      return originalFetch.apply(this, args).then(response => {
+        // Check if this looks like a login request
+        const url = args[0];
+        if (typeof url === 'string' && 
+            (url.includes('/login') || url.includes('/auth') || url.includes('/signin'))) {
+          
+          // Clone response to read without consuming
+          const clonedResponse = response.clone();
+          clonedResponse.json().then(data => {
+            console.log('🔍 Detected login response:', data);
+            window.autoSyncFromLogin(data);
+          }).catch(() => {
+            // Response might not be JSON, ignore
+          });
+        }
+        return response;
+      });
+    };
+
+    // Hook into XMLHttpRequest
+    const originalXHROpen = XMLHttpRequest.prototype.open;
+    const originalXHRSend = XMLHttpRequest.prototype.send;
+    
+    XMLHttpRequest.prototype.open = function(method, url, ...args) {
+      this._url = url;
+      return originalXHROpen.apply(this, [method, url, ...args]);
+    };
+    
+    XMLHttpRequest.prototype.send = function(...args) {
+      this.addEventListener('load', function() {
+        if (this._url && 
+            (this._url.includes('/login') || this._url.includes('/auth') || this._url.includes('/signin'))) {
+          try {
+            const data = JSON.parse(this.responseText);
+            console.log('🔍 Detected XHR login response:', data);
+            window.autoSyncFromLogin(data);
+          } catch (e) {
+            // Response might not be JSON, ignore
+          }
+        }
+      });
+      return originalXHRSend.apply(this, args);
+    };
+    
+    console.log('✅ Auto-detection hooks installed');
+  }
+
+  /**
    * Check if extension is available
    */
   function checkExtensionAvailability() {
@@ -140,15 +232,125 @@
   }
 
   /**
+   * Try to detect existing session from various sources
+   */
+  function detectExistingSession() {
+    console.log('🔍 Detecting existing session from web app...');
+    
+    // Method 1: Check if sessionId is in URL hash (common pattern)
+    const hash = window.location.hash;
+    if (hash.includes('sessionId=')) {
+      const sessionId = hash.match(/sessionId=([^&]+)/)?.[1];
+      if (sessionId) {
+        console.log('✅ Found sessionId in URL hash');
+        return { sessionId };
+      }
+    }
+    
+    // Method 2: Check for common session storage patterns
+    const possibleSessionKeys = [
+      'sessionId', 'session_id', 'session-id',
+      'authToken', 'auth_token', 'auth-token',
+      'accessToken', 'access_token', 'access-token'
+    ];
+    
+    const possibleUserKeys = [
+      'userId', 'user_id', 'user-id',
+      'userID', 'USER_ID'
+    ];
+    
+    const possibleEmailKeys = [
+      'email', 'userEmail', 'user_email', 'user-email'
+    ];
+    
+    let detectedSession = {};
+    
+    // Check localStorage for various key patterns
+    for (const key of possibleSessionKeys) {
+      const value = localStorage.getItem(key);
+      if (value && value !== 'null' && value !== 'undefined') {
+        detectedSession.sessionId = value;
+        console.log(`✅ Found session in localStorage.${key}:`, value.substring(0, 20) + '...');
+        break;
+      }
+    }
+    
+    for (const key of possibleUserKeys) {
+      const value = localStorage.getItem(key);
+      if (value && value !== 'null' && value !== 'undefined') {
+        detectedSession.userId = value;
+        console.log(`✅ Found userId in localStorage.${key}:`, value);
+        break;
+      }
+    }
+    
+    for (const key of possibleEmailKeys) {
+      const value = localStorage.getItem(key);
+      if (value && value !== 'null' && value !== 'undefined') {
+        detectedSession.email = value;
+        console.log(`✅ Found email in localStorage.${key}:`, value);
+        break;
+      }
+    }
+    
+    // Method 3: Check sessionStorage as fallback
+    if (!detectedSession.sessionId) {
+      for (const key of possibleSessionKeys) {
+        const value = sessionStorage.getItem(key);
+        if (value && value !== 'null' && value !== 'undefined') {
+          detectedSession.sessionId = value;
+          console.log(`✅ Found session in sessionStorage.${key}:`, value.substring(0, 20) + '...');
+          break;
+        }
+      }
+    }
+    
+    return detectedSession;
+  }
+
+  /**
+   * Normalize session data to standard format
+   */
+  function normalizeSessionData(detectedSession) {
+    if (detectedSession.sessionId && detectedSession.userId) {
+      // Store in standard format
+      localStorage.setItem('sessionId', detectedSession.sessionId);
+      localStorage.setItem('userId', detectedSession.userId);
+      if (detectedSession.email) {
+        localStorage.setItem('email', detectedSession.email);
+      }
+      
+      console.log('✅ Session data normalized to standard format');
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Initialize sync system
    */
   function initializeSync() {
     console.log('🚀 Initializing web app session sync...');
     
+    // Set up auto-detection hooks first
+    setupAutoDetection();
+    
+    // Then try to detect existing session
+    const detectedSession = detectExistingSession();
+    if (detectedSession.sessionId || detectedSession.userId) {
+      console.log('🔍 Detected existing session data:', detectedSession);
+      
+      // Normalize to standard format
+      if (normalizeSessionData(detectedSession)) {
+        // Trigger sync immediately
+        setTimeout(checkSessionChanges, 100);
+      }
+    }
+    
     // Check initial state
     checkSessionChanges();
     
-    // Set up periodic checking
+    // Set up periodic checking (more frequent initially)
     setInterval(checkSessionChanges, CHECK_INTERVAL);
     
     // Listen for storage events (from other tabs)
@@ -164,7 +366,27 @@
       setTimeout(checkSessionChanges, 100);
     });
     
-    console.log('✅ Web app session sync initialized');
+    // Listen for DOM changes (when web app updates session)
+    const observer = new MutationObserver(() => {
+      // Debounce the session check
+      clearTimeout(window.sessionCheckTimeout);
+      window.sessionCheckTimeout = setTimeout(() => {
+        const newSession = detectExistingSession();
+        if (newSession.sessionId || newSession.userId) {
+          normalizeSessionData(newSession);
+          checkSessionChanges();
+        }
+      }, 500);
+    });
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-session', 'data-user', 'data-auth']
+    });
+    
+    console.log('✅ Web app session sync initialized with enhanced detection');
   }
 
   // Initialize when DOM is ready
@@ -178,6 +400,8 @@
   window.webAppSync = {
     checkSession: checkSessionChanges,
     syncSession: window.syncSessionWithExtension,
+    autoSyncFromLogin: window.autoSyncFromLogin,
+    detectExistingSession: detectExistingSession,
     isExtensionAvailable: checkExtensionAvailability
   };
 
