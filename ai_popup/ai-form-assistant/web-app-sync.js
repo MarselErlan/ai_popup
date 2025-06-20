@@ -1,18 +1,27 @@
 /**
- * 🔄 Web App Session Sync Script
- * This script helps synchronize login sessions between the web app and browser extension
+ * 🔄 Unified Web App Session Sync Script
  * 
- * Usage: Include this script in your web app to enable automatic session sync
+ * This single script handles ALL session synchronization between your web app and browser extension.
+ * No need for multiple scripts - this does everything!
+ * 
+ * Features:
+ * ✅ Automatic login detection from API calls
+ * ✅ Manual sync functions for custom integration
+ * ✅ Multiple localStorage key format detection
+ * ✅ Framework integration helpers (React, Vue, Angular)
+ * ✅ Real-time session monitoring
+ * ✅ Extension communication
+ * ✅ Error handling and debugging
+ * 
+ * Usage: Just include this script in your web app HTML:
+ * <script src="web-app-sync.js"></script>
  */
 
 (function() {
-  console.log('🔄 Web App Session Sync loaded');
+  console.log('🔄 Unified Web App Session Sync loaded');
 
   // Configuration
-  const EXTENSION_ID = chrome.runtime?.id;
   const CHECK_INTERVAL = 2000; // Check every 2 seconds
-  
-  // Track last known session state
   let lastSessionState = null;
 
   /**
