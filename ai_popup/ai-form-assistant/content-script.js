@@ -205,12 +205,7 @@
     }
   }
 
-  // Hide popup when clicking elsewhere
-  document.addEventListener('click', function(event) {
-    if (translationPopup && !translationPopup.contains(event.target)) {
-      hideTranslationPopup();
-    }
-  });
+  // Removed click-outside functionality - only X button closes popup
 
   // Listen for messages from popup to toggle translation
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
