@@ -28,7 +28,7 @@
     setTimeout(async () => {
       const selectedText = window.getSelection().toString().trim();
       
-      if (selectedText.length > 0 && selectedText.length < 500) {
+      if (selectedText.length > 0) {
         console.log('🔤 Text selected for translation:', selectedText);
         
         // Get selection position for popup placement
@@ -95,13 +95,49 @@
     translationPopup.style.cssText = getPopupBaseStyles(rect);
     
     translationPopup.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-        <span style="font-weight: 600; opacity: 0.8; font-size: 12px;">🌐 Translating...</span>
-        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 16px; opacity: 0.7; padding: 0; margin: 0;">×</button>
+      <div id="ai-drag-header" style="
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        padding: 12px 16px; 
+        background: rgba(255,255,255,0.1); 
+        border-radius: 10px 10px 0 0; 
+        cursor: move;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+        user-select: none;
+      ">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-weight: 600; opacity: 0.9; font-size: 13px;">🌐 Translating...</span>
+          <div style="display: flex; gap: 4px;">
+            <div style="width: 4px; height: 4px; background: rgba(255,255,255,0.6); border-radius: 50%;"></div>
+            <div style="width: 4px; height: 4px; background: rgba(255,255,255,0.6); border-radius: 50%;"></div>
+            <div style="width: 4px; height: 4px; background: rgba(255,255,255,0.6); border-radius: 50%;"></div>
+          </div>
+        </div>
+        <button id="ai-close-btn" style="
+          background: rgba(255,255,255,0.2); 
+          border: none; 
+          color: white; 
+          cursor: pointer; 
+          font-size: 16px; 
+          opacity: 0.8; 
+          padding: 4px 8px; 
+          margin: 0; 
+          border-radius: 4px;
+          transition: all 0.2s;
+        ">×</button>
       </div>
-      <div style="padding: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; text-align: center;">
-        <div style="display: inline-block; width: 18px; height: 18px; border: 2px solid #fff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-      </div>
+              <div style="
+          padding: 24px; 
+          text-align: center; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center;
+          flex: 1;
+          min-height: 60px;
+        ">
+          <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid #fff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        </div>
     `;
     
     // Add loading animation
@@ -118,9 +154,24 @@
     }
     
     document.body.appendChild(translationPopup);
+    
+    // Add close button functionality for loading popup
+    const loadingCloseBtn = translationPopup.querySelector('#ai-close-btn');
+    if (loadingCloseBtn) {
+      loadingCloseBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        translationPopup.remove();
+        translationPopup = null;
+        console.log('🗑️ Loading popup closed via X button');
+      });
+    }
+    
+    // Make loading popup draggable too
+    makeDraggable(translationPopup);
   }
 
-  // Show translation popup - only Russian translation (SUPER STABLE VERSION)
+  // Show translation popup - draggable and resizable (SUPER STABLE VERSION)
   function showTranslationPopup(translation, rect) {
     // Remove any existing popup first
     const existingPopup = document.getElementById('ai-translation-popup-stable');
@@ -128,25 +179,50 @@
       existingPopup.remove();
     }
     
-    // Create a completely independent popup
+    // Create a completely independent popup with dynamic sizing
     const popup = document.createElement('div');
     popup.id = 'ai-translation-popup-stable';
     popup.style.cssText = getPopupBaseStyles(rect);
     
-    // Create close button with direct event listener (more reliable than onclick)
+    // Create draggable header and resizable content
     popup.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-        <span style="font-weight: 600; opacity: 0.8; font-size: 12px;">🇷🇺 Русский</span>
-        <button id="ai-close-btn" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px; opacity: 0.8; padding: 0; margin: 0; line-height: 1;">×</button>
-      </div>
-      <div style="padding: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 14px; font-weight: 500; line-height: 1.4; max-height: 120px; overflow-y: auto;">
+      
+        <button id="ai-close-btn" style="
+          background: rgba(255,255,255,0.2); 
+          border: none; 
+          color: white; 
+          cursor: pointer; 
+          font-size: 16px; 
+          opacity: 0.8; 
+          padding: 4px 8px; 
+          margin: 0; 
+          border-radius: 4px;
+          transition: all 0.2s;
+        ">×</button>
+              <div id="ai-content" style="
+          padding: 20px 24px; 
+          font-size: 14px; 
+          font-weight: 500; 
+          line-height: 1.5; 
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+          hyphens: auto;
+          text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex: 1;
+          min-height: 0;
+          box-sizing: border-box;
+
+        ">
         ${translation.translated_text}
       </div>
     `;
     
     document.body.appendChild(popup);
     
-    // Add close button event listener directly to the DOM element
+    // Add close button event listener
     const closeBtn = popup.querySelector('#ai-close-btn');
     if (closeBtn) {
       closeBtn.addEventListener('click', function(e) {
@@ -155,12 +231,26 @@
         popup.remove();
         console.log('🗑️ Translation popup closed via X button');
       });
+      
+      // Add hover effect for close button
+      closeBtn.addEventListener('mouseenter', function() {
+        this.style.background = 'rgba(255,255,255,0.3)';
+        this.style.opacity = '1';
+      });
+      
+      closeBtn.addEventListener('mouseleave', function() {
+        this.style.background = 'rgba(255,255,255,0.2)';
+        this.style.opacity = '0.8';
+      });
     }
+    
+    // Make popup draggable
+    makeDraggable(popup);
     
     // Update the global reference
     translationPopup = popup;
     
-    console.log('✅ Stable translation popup created - will only close with X button');
+    console.log('✅ Draggable translation popup created - drag to move, resize corner to adjust size');
   }
 
   // Show error popup - simplified
@@ -186,35 +276,37 @@
     // No auto-hide - only close with X button or click outside
   }
 
-  // Get base popup styles - positioned above selected text
+  // Professional dynamic popup styles - auto-adjusts to content
   function getPopupBaseStyles(rect, bgColor = '#667eea') {
     const gradient = bgColor === '#667eea' 
       ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
       : `linear-gradient(135deg, ${bgColor} 0%, #c0392b 100%)`;
-    
-    // Calculate position above the selected text
-    const popupHeight = 100; // Estimated popup height
-    const topPosition = Math.max(10, rect.top + window.scrollY - popupHeight - 10);
-    const leftPosition = Math.max(10, Math.min(window.innerWidth - 280, rect.left + window.scrollX));
       
     return `
       position: fixed;
-      top: ${topPosition}px;
-      left: ${leftPosition}px;
+      top: 20px;
+      left: 20px;
       background: ${gradient};
       color: white;
-      padding: 14px 18px;
-      border-radius: 10px;
-      box-shadow: 0 6px 25px rgba(0,0,0,0.35);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
       z-index: 999999;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 14px;
-      width: 260px;
-      border: 2px solid rgba(255,255,255,0.25);
-      backdrop-filter: blur(12px);
-      transition: all 0.2s ease;
-      transform: scale(1);
-      opacity: 1;
+      width: fit-content;
+      height: fit-content;
+      min-width: 200px;
+      max-width: 600px;
+      min-height: 80px;
+      max-height: none;
+      border: 2px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(15px);
+      cursor: move;
+      user-select: none;
+      resize: both;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     `;
   }
 
@@ -223,6 +315,70 @@
     if (translationPopup) {
       translationPopup.remove();
       translationPopup = null;
+    }
+  }
+
+  // Make entire popup draggable - SIMPLIFIED VERSION
+  function makeDraggable(popup) {
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+    
+    // Make entire popup draggable (except buttons)
+    popup.addEventListener('mousedown', dragStart);
+    document.addEventListener('mousemove', dragMove);
+    document.addEventListener('mouseup', dragEnd);
+    
+    function dragStart(e) {
+      // Don't drag when clicking buttons or content area
+      if (e.target.tagName === 'BUTTON' || e.target.id === 'ai-content') return;
+      
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      // Get current position of popup
+      const rect = popup.getBoundingClientRect();
+      startLeft = rect.left;
+      startTop = rect.top;
+      
+      popup.style.cursor = 'grabbing';
+      
+      e.preventDefault(); // Prevent text selection
+    }
+    
+    function dragMove(e) {
+      if (isDragging) {
+        e.preventDefault();
+        
+        // Calculate how much mouse has moved
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        // Calculate new position
+        let newLeft = startLeft + deltaX;
+        let newTop = startTop + deltaY;
+        
+        // Keep popup within screen bounds
+        const maxX = window.innerWidth - popup.offsetWidth;
+        const maxY = window.innerHeight - popup.offsetHeight;
+        
+        newLeft = Math.max(0, Math.min(newLeft, maxX));
+        newTop = Math.max(0, Math.min(newTop, maxY));
+        
+        // Apply new position
+        popup.style.left = newLeft + 'px';
+        popup.style.top = newTop + 'px';
+      }
+    }
+    
+    function dragEnd() {
+      if (isDragging) {
+        isDragging = false;
+        popup.style.cursor = 'move';
+      }
     }
   }
 
