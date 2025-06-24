@@ -1,12 +1,237 @@
 /**
  * 🎯 AI Form Assistant - Content Script
- * Enhanced version with improved authentication and field detection
+ * Enhanced version with improved authentication, field detection, and text translation
  */
 
 (function () {
   // Use extension icon URL
   const AI_ICON_URL = chrome.runtime.getURL('ai_popup.png');
   const API_BASE_URL = 'http://localhost:8000';
+
+  // ============================================================================
+  // 🌐 TRANSLATION FEATURE - Highlight text to translate English → Russian
+  // ============================================================================
+  
+  let translationPopup = null;
+  let isTranslationEnabled = true; // Can be toggled via popup
+
+  // Listen for text selection
+  document.addEventListener('mouseup', async function(event) {
+    if (!isTranslationEnabled) return;
+    
+    const selectedText = window.getSelection().toString().trim();
+    
+    if (selectedText.length > 0 && selectedText.length < 500) {
+      // Only translate if text is selected and not too long
+      console.log('🔤 Text selected for translation:', selectedText);
+      
+      // Get selection position for popup placement
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        
+        // Call translation API
+        await translateAndShowPopup(selectedText, rect);
+      }
+    } else {
+      // Hide popup if no text selected
+      hideTranslationPopup();
+    }
+  });
+
+  // Translation function
+  async function translateAndShowPopup(text, rect) {
+    try {
+      console.log('🌐 Translating text:', text);
+      
+      // Show loading popup first
+      showLoadingPopup(text, rect);
+      
+      const response = await fetch(`${API_BASE_URL}/api/translate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: text,
+          source_language: 'en',
+          target_language: 'ru'
+        })
+      });
+      
+      const result = await response.json();
+      console.log('✅ Translation result:', result);
+      
+      if (result.status === 'success') {
+        showTranslationPopup(result, rect);
+      } else {
+        showErrorPopup(text, 'Translation service error', rect);
+      }
+      
+    } catch (error) {
+      console.error('❌ Translation failed:', error);
+      showErrorPopup(text, 'Network error - make sure backend is running', rect);
+    }
+  }
+
+  // Show loading popup
+  function showLoadingPopup(text, rect) {
+    hideTranslationPopup();
+    
+    translationPopup = document.createElement('div');
+    translationPopup.id = 'ai-translation-popup';
+    translationPopup.style.cssText = getPopupBaseStyles(rect);
+    
+    translationPopup.innerHTML = `
+      <div style="margin-bottom: 6px; font-weight: 600; opacity: 0.8; font-size: 12px;">
+        🌐 Translating...
+      </div>
+      <div style="margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 13px;">
+        ${text.length > 50 ? text.substring(0, 50) + '...' : text}
+      </div>
+      <div style="padding: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; text-align: center;">
+        <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+      </div>
+    `;
+    
+    // Add loading animation
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(translationPopup);
+  }
+
+  // Show translation popup
+  function showTranslationPopup(translation, rect) {
+    hideTranslationPopup();
+    
+    translationPopup = document.createElement('div');
+    translationPopup.id = 'ai-translation-popup';
+    translationPopup.style.cssText = getPopupBaseStyles(rect);
+    
+    translationPopup.innerHTML = `
+      <div style="margin-bottom: 6px; font-weight: 600; opacity: 0.8; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <span>🇬🇧 → 🇷🇺 Translation</span>
+        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 16px; opacity: 0.7; padding: 0; margin: 0;">×</button>
+      </div>
+      <div style="margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 13px; max-height: 60px; overflow-y: auto;">
+        ${translation.original_text}
+      </div>
+      <div style="padding: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; font-weight: 500; max-height: 80px; overflow-y: auto;">
+        ${translation.translated_text}
+      </div>
+      <div style="margin-top: 6px; font-size: 11px; opacity: 0.7; text-align: right;">
+        Auto-hide in 8s • Click anywhere to close
+      </div>
+    `;
+    
+    document.body.appendChild(translationPopup);
+    
+    // Auto-hide after 8 seconds
+    setTimeout(hideTranslationPopup, 8000);
+  }
+
+  // Show error popup
+  function showErrorPopup(text, error, rect) {
+    hideTranslationPopup();
+    
+    translationPopup = document.createElement('div');
+    translationPopup.id = 'ai-translation-popup';
+    translationPopup.style.cssText = getPopupBaseStyles(rect, '#e74c3c'); // Red background for error
+    
+    translationPopup.innerHTML = `
+      <div style="margin-bottom: 6px; font-weight: 600; opacity: 0.8; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <span>❌ Translation Error</span>
+        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 16px; opacity: 0.7; padding: 0; margin: 0;">×</button>
+      </div>
+      <div style="margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 13px;">
+        ${text.length > 50 ? text.substring(0, 50) + '...' : text}
+      </div>
+      <div style="padding: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; font-size: 12px;">
+        ${error}
+      </div>
+    `;
+    
+    document.body.appendChild(translationPopup);
+    
+    // Auto-hide after 5 seconds
+    setTimeout(hideTranslationPopup, 5000);
+  }
+
+  // Get base popup styles
+  function getPopupBaseStyles(rect, bgColor = '#667eea') {
+    const gradient = bgColor === '#667eea' 
+      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      : `linear-gradient(135deg, ${bgColor} 0%, #c0392b 100%)`;
+      
+    return `
+      position: fixed;
+      top: ${Math.max(10, rect.top + window.scrollY - 10)}px;
+      left: ${Math.min(window.innerWidth - 320, rect.left + window.scrollX)}px;
+      background: ${gradient};
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      z-index: 999999;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      max-width: 300px;
+      min-width: 250px;
+      border: 2px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    `;
+  }
+
+  // Hide translation popup
+  function hideTranslationPopup() {
+    if (translationPopup) {
+      translationPopup.style.opacity = '0';
+      translationPopup.style.transform = 'scale(0.9)';
+      setTimeout(() => {
+        if (translationPopup) {
+          translationPopup.remove();
+          translationPopup = null;
+        }
+      }, 300);
+    }
+  }
+
+  // Hide popup when clicking elsewhere
+  document.addEventListener('click', function(event) {
+    if (translationPopup && !translationPopup.contains(event.target)) {
+      hideTranslationPopup();
+    }
+  });
+
+  // Listen for messages from popup to toggle translation
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'toggleTranslation') {
+      isTranslationEnabled = request.enabled;
+      console.log('🌐 Translation feature:', isTranslationEnabled ? 'enabled' : 'disabled');
+      sendResponse({ success: true });
+    }
+  });
+
+  // Initialize translation state from storage
+  chrome.storage.local.get(['translationEnabled'], (result) => {
+    isTranslationEnabled = result.translationEnabled !== false; // Default to true
+    console.log('🌐 Translation feature initialized:', isTranslationEnabled ? 'enabled' : 'disabled');
+  });
+
+  console.log('🌐 AI Translation feature loaded and ready!');
+
+  // ============================================================================
+  // 🎯 ORIGINAL FORM FILLING FEATURE
+  // ============================================================================
 
   const aiButton = document.createElement('img');
   aiButton.src = AI_ICON_URL;

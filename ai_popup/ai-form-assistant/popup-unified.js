@@ -628,6 +628,71 @@ class UnifiedPopupManager {
         this.openUrlTracker();
       });
     }
+
+    // Translation toggle
+    const translationToggle = document.getElementById('translationToggle');
+    if (translationToggle) {
+      // Load saved state
+      this.loadTranslationState();
+      
+      translationToggle.addEventListener('change', async () => {
+        const isEnabled = translationToggle.checked;
+        console.log('🌐 Translation toggle changed:', isEnabled ? 'enabled' : 'disabled');
+        
+        // Save state to storage
+        try {
+          await chrome.storage.local.set({ 'translationEnabled': isEnabled });
+        } catch (error) {
+          console.error('Failed to save translation state:', error);
+        }
+        
+        // Send message to content script
+        try {
+          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (tabs[0]) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              action: 'toggleTranslation',
+              enabled: isEnabled
+            });
+          }
+        } catch (error) {
+          console.error('Failed to send message to content script:', error);
+        }
+        
+        // Update instructions
+        this.updateTranslationInstructions(isEnabled);
+      });
+    }
+  }
+
+  async loadTranslationState() {
+    try {
+      const result = await chrome.storage.local.get(['translationEnabled']);
+      const isEnabled = result.translationEnabled !== false; // Default to true
+      
+      const translationToggle = document.getElementById('translationToggle');
+      if (translationToggle) {
+        translationToggle.checked = isEnabled;
+        this.updateTranslationInstructions(isEnabled);
+      }
+    } catch (error) {
+      console.error('Failed to load translation state:', error);
+    }
+  }
+
+  updateTranslationInstructions(isEnabled) {
+    const instructionsDiv = document.getElementById('translationInstructions');
+    if (instructionsDiv) {
+      if (isEnabled) {
+        instructionsDiv.innerHTML = '✨ Highlight any English text on websites to see instant Russian translation';
+        instructionsDiv.style.background = '#ecfdf5';
+        instructionsDiv.style.borderLeft = '3px solid #10b981';
+      } else {
+        instructionsDiv.innerHTML = '⏸️ Translation feature is disabled - toggle above to enable';
+        instructionsDiv.style.background = '#fef3c7';
+        instructionsDiv.style.borderLeft = '3px solid #f59e0b';
+      }
+    }
   }
 
   async loadUserInfo() {
