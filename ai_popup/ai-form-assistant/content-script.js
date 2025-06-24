@@ -15,29 +15,33 @@
   let translationPopup = null;
   let isTranslationEnabled = true; // Can be toggled via popup
 
-  // Listen for text selection
+  // Listen for text selection - improved stability
   document.addEventListener('mouseup', async function(event) {
     if (!isTranslationEnabled) return;
     
-    const selectedText = window.getSelection().toString().trim();
-    
-    if (selectedText.length > 0 && selectedText.length < 500) {
-      // Only translate if text is selected and not too long
-      console.log('🔤 Text selected for translation:', selectedText);
+    // Small delay to ensure selection is complete
+    setTimeout(async () => {
+      const selectedText = window.getSelection().toString().trim();
       
-      // Get selection position for popup placement
-      const selection = window.getSelection();
-      if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
+      if (selectedText.length > 0 && selectedText.length < 500) {
+        console.log('🔤 Text selected for translation:', selectedText);
         
-        // Call translation API
-        await translateAndShowPopup(selectedText, rect);
+        // Get selection position for popup placement
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          
+          // Only proceed if we have a valid selection rectangle
+          if (rect.width > 0 && rect.height > 0) {
+            await translateAndShowPopup(selectedText, rect);
+          }
+        }
+      } else {
+        // Hide popup if no text selected
+        hideTranslationPopup();
       }
-    } else {
-      // Hide popup if no text selected
-      hideTranslationPopup();
-    }
+    }, 100); // 100ms delay for stability
   });
 
   // Translation function
@@ -75,7 +79,7 @@
     }
   }
 
-  // Show loading popup
+  // Show loading popup - simplified
   function showLoadingPopup(text, rect) {
     hideTranslationPopup();
     
@@ -84,31 +88,32 @@
     translationPopup.style.cssText = getPopupBaseStyles(rect);
     
     translationPopup.innerHTML = `
-      <div style="margin-bottom: 6px; font-weight: 600; opacity: 0.8; font-size: 12px;">
-        🌐 Translating...
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-weight: 600; opacity: 0.8; font-size: 12px;">🌐 Translating...</span>
+        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 16px; opacity: 0.7; padding: 0; margin: 0;">×</button>
       </div>
-      <div style="margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 13px;">
-        ${text.length > 50 ? text.substring(0, 50) + '...' : text}
-      </div>
-      <div style="padding: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; text-align: center;">
-        <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+      <div style="padding: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; text-align: center;">
+        <div style="display: inline-block; width: 18px; height: 18px; border: 2px solid #fff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
       </div>
     `;
     
     // Add loading animation
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    `;
-    document.head.appendChild(style);
+    if (!document.getElementById('ai-spinner-style')) {
+      const style = document.createElement('style');
+      style.id = 'ai-spinner-style';
+      style.textContent = `
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
     
     document.body.appendChild(translationPopup);
   }
 
-  // Show translation popup
+  // Show translation popup - only Russian translation
   function showTranslationPopup(translation, rect) {
     hideTranslationPopup();
     
@@ -117,28 +122,21 @@
     translationPopup.style.cssText = getPopupBaseStyles(rect);
     
     translationPopup.innerHTML = `
-      <div style="margin-bottom: 6px; font-weight: 600; opacity: 0.8; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
-        <span>🇬🇧 → 🇷🇺 Translation</span>
-        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 16px; opacity: 0.7; padding: 0; margin: 0;">×</button>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <span style="font-weight: 600; opacity: 0.8; font-size: 12px;">🇷🇺 Русский</span>
+        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px; opacity: 0.8; padding: 0; margin: 0; line-height: 1;">×</button>
       </div>
-      <div style="margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 13px; max-height: 60px; overflow-y: auto;">
-        ${translation.original_text}
-      </div>
-      <div style="padding: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; font-weight: 500; max-height: 80px; overflow-y: auto;">
+      <div style="padding: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 14px; font-weight: 500; line-height: 1.4; max-height: 120px; overflow-y: auto;">
         ${translation.translated_text}
-      </div>
-      <div style="margin-top: 6px; font-size: 11px; opacity: 0.7; text-align: right;">
-        Auto-hide in 8s • Click anywhere to close
       </div>
     `;
     
     document.body.appendChild(translationPopup);
     
-    // Auto-hide after 8 seconds
-    setTimeout(hideTranslationPopup, 8000);
+    // No auto-hide - only close with X button or click outside
   }
 
-  // Show error popup
+  // Show error popup - simplified
   function showErrorPopup(text, error, rect) {
     hideTranslationPopup();
     
@@ -147,47 +145,49 @@
     translationPopup.style.cssText = getPopupBaseStyles(rect, '#e74c3c'); // Red background for error
     
     translationPopup.innerHTML = `
-      <div style="margin-bottom: 6px; font-weight: 600; opacity: 0.8; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
-        <span>❌ Translation Error</span>
-        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 16px; opacity: 0.7; padding: 0; margin: 0;">×</button>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <span style="font-weight: 600; opacity: 0.8; font-size: 12px;">❌ Translation Error</span>
+        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px; opacity: 0.8; padding: 0; margin: 0; line-height: 1;">×</button>
       </div>
-      <div style="margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 13px;">
-        ${text.length > 50 ? text.substring(0, 50) + '...' : text}
-      </div>
-      <div style="padding: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; font-size: 12px;">
+      <div style="padding: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 13px; line-height: 1.4;">
         ${error}
       </div>
     `;
     
     document.body.appendChild(translationPopup);
     
-    // Auto-hide after 5 seconds
-    setTimeout(hideTranslationPopup, 5000);
+    // No auto-hide - only close with X button or click outside
   }
 
-  // Get base popup styles
+  // Get base popup styles - positioned above selected text
   function getPopupBaseStyles(rect, bgColor = '#667eea') {
     const gradient = bgColor === '#667eea' 
       ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
       : `linear-gradient(135deg, ${bgColor} 0%, #c0392b 100%)`;
+    
+    // Calculate position above the selected text
+    const popupHeight = 100; // Estimated popup height
+    const topPosition = Math.max(10, rect.top + window.scrollY - popupHeight - 10);
+    const leftPosition = Math.max(10, Math.min(window.innerWidth - 280, rect.left + window.scrollX));
       
     return `
       position: fixed;
-      top: ${Math.max(10, rect.top + window.scrollY - 10)}px;
-      left: ${Math.min(window.innerWidth - 320, rect.left + window.scrollX)}px;
+      top: ${topPosition}px;
+      left: ${leftPosition}px;
       background: ${gradient};
       color: white;
-      padding: 12px 16px;
-      border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      padding: 14px 18px;
+      border-radius: 10px;
+      box-shadow: 0 6px 25px rgba(0,0,0,0.35);
       z-index: 999999;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 14px;
-      max-width: 300px;
-      min-width: 250px;
-      border: 2px solid rgba(255,255,255,0.2);
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
+      width: 260px;
+      border: 2px solid rgba(255,255,255,0.25);
+      backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+      transform: scale(1);
+      opacity: 1;
     `;
   }
 
