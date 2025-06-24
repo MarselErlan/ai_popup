@@ -8,7 +8,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true
+  withCredentials: false  // ✅ Fixed: Allow universal CORS access
 });
 
 // Add authorization header if session exists
