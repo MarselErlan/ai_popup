@@ -19,6 +19,11 @@
   document.addEventListener('mouseup', async function(event) {
     if (!isTranslationEnabled) return;
     
+    // Don't hide popup if clicking on the popup itself
+    if (event.target.closest('#ai-translation-popup')) {
+      return;
+    }
+    
     // Small delay to ensure selection is complete
     setTimeout(async () => {
       const selectedText = window.getSelection().toString().trim();
@@ -37,10 +42,8 @@
             await translateAndShowPopup(selectedText, rect);
           }
         }
-      } else {
-        // Hide popup if no text selected
-        hideTranslationPopup();
       }
+      // REMOVED: else clause that was hiding popup when no text selected
     }, 100); // 100ms delay for stability
   });
 
@@ -81,10 +84,14 @@
 
   // Show loading popup - simplified
   function showLoadingPopup(text, rect) {
-    hideTranslationPopup();
+    // Remove any existing popup
+    const existingPopup = document.getElementById('ai-translation-popup-stable');
+    if (existingPopup) {
+      existingPopup.remove();
+    }
     
     translationPopup = document.createElement('div');
-    translationPopup.id = 'ai-translation-popup';
+    translationPopup.id = 'ai-translation-popup-stable';
     translationPopup.style.cssText = getPopupBaseStyles(rect);
     
     translationPopup.innerHTML = `
@@ -113,27 +120,47 @@
     document.body.appendChild(translationPopup);
   }
 
-  // Show translation popup - only Russian translation
+  // Show translation popup - only Russian translation (SUPER STABLE VERSION)
   function showTranslationPopup(translation, rect) {
-    hideTranslationPopup();
+    // Remove any existing popup first
+    const existingPopup = document.getElementById('ai-translation-popup-stable');
+    if (existingPopup) {
+      existingPopup.remove();
+    }
     
-    translationPopup = document.createElement('div');
-    translationPopup.id = 'ai-translation-popup';
-    translationPopup.style.cssText = getPopupBaseStyles(rect);
+    // Create a completely independent popup
+    const popup = document.createElement('div');
+    popup.id = 'ai-translation-popup-stable';
+    popup.style.cssText = getPopupBaseStyles(rect);
     
-    translationPopup.innerHTML = `
+    // Create close button with direct event listener (more reliable than onclick)
+    popup.innerHTML = `
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
         <span style="font-weight: 600; opacity: 0.8; font-size: 12px;">🇷🇺 Русский</span>
-        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px; opacity: 0.8; padding: 0; margin: 0; line-height: 1;">×</button>
+        <button id="ai-close-btn" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px; opacity: 0.8; padding: 0; margin: 0; line-height: 1;">×</button>
       </div>
       <div style="padding: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 14px; font-weight: 500; line-height: 1.4; max-height: 120px; overflow-y: auto;">
         ${translation.translated_text}
       </div>
     `;
     
-    document.body.appendChild(translationPopup);
+    document.body.appendChild(popup);
     
-    // No auto-hide - only close with X button or click outside
+    // Add close button event listener directly to the DOM element
+    const closeBtn = popup.querySelector('#ai-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        popup.remove();
+        console.log('🗑️ Translation popup closed via X button');
+      });
+    }
+    
+    // Update the global reference
+    translationPopup = popup;
+    
+    console.log('✅ Stable translation popup created - will only close with X button');
   }
 
   // Show error popup - simplified
@@ -191,17 +218,11 @@
     `;
   }
 
-  // Hide translation popup
+  // Hide translation popup - simplified, no animation
   function hideTranslationPopup() {
     if (translationPopup) {
-      translationPopup.style.opacity = '0';
-      translationPopup.style.transform = 'scale(0.9)';
-      setTimeout(() => {
-        if (translationPopup) {
-          translationPopup.remove();
-          translationPopup = null;
-        }
-      }, 300);
+      translationPopup.remove();
+      translationPopup = null;
     }
   }
 
