@@ -4,6 +4,9 @@
  * Script to update extension code for production deployment
  * Usage: node scripts/update-extension-for-production.js <railway-url>
  * Example: node scripts/update-extension-for-production.js https://my-app.up.railway.app
+ * 
+ * For custom domains:
+ * Example: node scripts/update-extension-for-production.js https://mpencil.online
  */
 
 import fs from 'fs';
@@ -55,6 +58,7 @@ if (!railwayUrl) {
   console.error('❌ Please provide the Railway URL as an argument');
   console.log('Usage: node scripts/update-extension-for-production.js <railway-url>');
   console.log('Example: node scripts/update-extension-for-production.js https://my-app.up.railway.app');
+  console.log('For custom domains: node scripts/update-extension-for-production.js https://mpencil.online');
   process.exit(1);
 }
 
