@@ -282,10 +282,20 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   };
 
     const checkExtensionStatus = () => {
+    console.log('🔍 Checking extension status...');
+    console.log('📍 Current URL:', window.location.href);
+    console.log('🏠 Current hostname:', window.location.hostname);
+    
     // Method 1: Check DOM attributes set by content script (most reliable)
     const extensionLoaded = document.documentElement.getAttribute('data-ai-extension-loaded') === 'true';
     const extensionVersion = document.documentElement.getAttribute('data-ai-extension-version');
     const extensionTimestamp = document.documentElement.getAttribute('data-ai-extension-timestamp');
+    
+    console.log('📋 DOM attribute checks:', {
+      loaded: extensionLoaded,
+      version: extensionVersion,
+      timestamp: extensionTimestamp
+    });
     
     if (extensionLoaded && extensionVersion) {
       if (!extensionInstalled) {
@@ -306,6 +316,14 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     const documentVar = (document as any).aiFormAssistantExtension;
     const parentVar = (window.parent as any)?.aiFormAssistantExtension;
     const topVar = (window.top as any)?.aiFormAssistantExtension;
+    
+    console.log('🌐 Global variable checks:', {
+      window: windowVar?.loaded,
+      document: documentVar?.loaded,
+      parent: parentVar?.loaded,
+      top: topVar?.loaded,
+      currentURL: window.location.href
+    });
     
     const hasGlobalVar = !!(windowVar?.loaded || documentVar?.loaded || parentVar?.loaded || topVar?.loaded);
     
@@ -334,6 +352,18 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
       console.log('❌ Extension not detected - marking as not installed');
       setExtensionInstalled(false);
       setExtensionLoggedIn(false);
+    }
+    
+    // Additional check: If we're on the custom domain and extension popup is visible, assume it's installed
+    if (window.location.hostname === 'mpencil.online' || window.location.hostname === 'www.mpencil.online') {
+      // Check if extension popup exists in DOM
+      const extensionPopup = document.querySelector('[id*="ai-"], [class*="ai-"]');
+      if (extensionPopup && !extensionInstalled) {
+        console.log('🎯 Extension popup detected on custom domain - assuming installed');
+        setExtensionInstalled(true);
+        setExtensionDetectedOnce(true);
+        checkExtensionAuthStatus();
+      }
     }
   };
 
