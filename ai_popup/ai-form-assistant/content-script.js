@@ -1018,6 +1018,7 @@
                          
     if (isDevelopment) {
       console.log('✅ Development environment detected - setting up extension communication');
+      console.log('🔧 Setting up DOM attributes and global variables...');
       // Only send message once per page load
       if (!hasNotified) {
         // Send postMessage
@@ -1076,6 +1077,11 @@
       }));
       
       console.log('✅ Extension presence marked via DOM attributes and events');
+      console.log('📋 DOM attributes set:', {
+        loaded: document.documentElement.getAttribute('data-ai-extension-loaded'),
+        version: document.documentElement.getAttribute('data-ai-extension-version'),
+        timestamp: document.documentElement.getAttribute('data-ai-extension-timestamp')
+      });
       
       // Set a marker in storage (with error handling)
       try {
@@ -1154,8 +1160,41 @@
   }
 
   // Notify on load and set up periodic refresh
+  console.log('🎯 AI Form Assistant content script starting...');
+  console.log('📍 Current URL:', window.location.href);
+  console.log('🏠 Current hostname:', window.location.hostname);
+  
   notifyExtensionLoaded();
   updateGlobalAuthStatus(); // Initial auth status
+  
+  // Fallback: Always set up basic detection for production domain
+  if (window.location.hostname === 'aipopup-production.up.railway.app') {
+    console.log('🚀 Production domain detected - setting up fallback detection');
+    
+    // Set DOM attributes immediately
+    document.documentElement.setAttribute('data-ai-extension-loaded', 'true');
+    document.documentElement.setAttribute('data-ai-extension-version', '2.0.0');
+    document.documentElement.setAttribute('data-ai-extension-timestamp', Date.now().toString());
+    
+    // Set global variable
+    window.aiFormAssistantExtension = {
+      version: '2.0.0',
+      loaded: true,
+      timestamp: Date.now(),
+      isLoggedIn: false,
+      checkAuth: async () => {
+        try {
+          const result = await chrome.storage.local.get(['sessionId', 'userId']);
+          return !!(result.sessionId && result.userId);
+        } catch (error) {
+          console.warn('Auth check failed:', error);
+          return false;
+        }
+      }
+    };
+    
+    console.log('✅ Fallback detection setup complete for production domain');
+  }
   
   // Refresh global variable and auth status every 10 seconds
   setInterval(() => {
