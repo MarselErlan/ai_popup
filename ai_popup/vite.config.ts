@@ -10,6 +10,11 @@ export default defineConfig({
   },
   preview: {
     port: process.env.PORT ? parseInt(process.env.PORT) : 4173,
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    allowedHosts: [
+      'aipopup-production.up.railway.app',
+      'localhost',
+      '127.0.0.1'
+    ]
   }
 })
