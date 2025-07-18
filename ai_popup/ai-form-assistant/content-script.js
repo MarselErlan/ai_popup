@@ -1009,9 +1009,10 @@
   const notifyExtensionLoaded = () => {
     console.log('🔍 Extension checking hostname:', window.location.hostname, 'port:', window.location.port);
     
-    // Work on localhost and development URLs
+    // Work on localhost, development URLs, and production Railway domain
     const isDevelopment = window.location.hostname === 'localhost' || 
                          window.location.hostname === '127.0.0.1' ||
+                         window.location.hostname === 'aipopup-production.up.railway.app' ||
                          window.location.port === '5173' ||
                          window.location.port === '3000';
                          
@@ -1092,6 +1093,7 @@
   async function updateGlobalAuthStatus() {
     const isDevelopment = window.location.hostname === 'localhost' || 
                          window.location.hostname === '127.0.0.1' ||
+                         window.location.hostname === 'aipopup-production.up.railway.app' ||
                          window.location.port === '5173' ||
                          window.location.port === '3000';
                          
