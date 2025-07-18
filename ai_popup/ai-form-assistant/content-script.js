@@ -1013,6 +1013,7 @@
     const isDevelopment = window.location.hostname === 'localhost' || 
                          window.location.hostname === '127.0.0.1' ||
                          window.location.hostname === 'aipopup-production.up.railway.app' ||
+                         window.location.hostname === 'mpencil.online' ||
                          window.location.port === '5173' ||
                          window.location.port === '3000';
                          
@@ -1100,6 +1101,7 @@
     const isDevelopment = window.location.hostname === 'localhost' || 
                          window.location.hostname === '127.0.0.1' ||
                          window.location.hostname === 'aipopup-production.up.railway.app' ||
+                         window.location.hostname === 'mpencil.online' ||
                          window.location.port === '5173' ||
                          window.location.port === '3000';
                          
@@ -1168,7 +1170,8 @@
   updateGlobalAuthStatus(); // Initial auth status
   
   // Fallback: Always set up basic detection for production domain
-  if (window.location.hostname === 'aipopup-production.up.railway.app') {
+  if (window.location.hostname === 'aipopup-production.up.railway.app' || 
+      window.location.hostname === 'mpencil.online') {
     console.log('🚀 Production domain detected - setting up fallback detection');
     
     // Set DOM attributes immediately
