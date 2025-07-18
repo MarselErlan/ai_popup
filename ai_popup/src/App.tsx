@@ -17,6 +17,14 @@ const App: React.FC = () => {
   const [showSignup, setShowSignup] = useState(false);
 
   useEffect(() => {
+    // Redirect from root domain to www subdomain for custom domain
+    const hostname = window.location.hostname;
+    if (hostname === 'mpencil.online' && !window.location.hostname.startsWith('www.')) {
+      const newUrl = `https://www.mpencil.online${window.location.pathname}${window.location.search}`;
+      window.location.href = newUrl;
+      return;
+    }
+
     // Check if user is already logged in
     const sessionId = localStorage.getItem('session_id');
     const userId = localStorage.getItem('user_id');
