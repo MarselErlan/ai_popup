@@ -1014,6 +1014,7 @@
                          window.location.hostname === '127.0.0.1' ||
                          window.location.hostname === 'aipopup-production.up.railway.app' ||
                          window.location.hostname === 'mpencil.online' ||
+                         window.location.hostname === 'www.mpencil.online' ||
                          window.location.port === '5173' ||
                          window.location.port === '3000';
                          
@@ -1102,6 +1103,7 @@
                          window.location.hostname === '127.0.0.1' ||
                          window.location.hostname === 'aipopup-production.up.railway.app' ||
                          window.location.hostname === 'mpencil.online' ||
+                         window.location.hostname === 'www.mpencil.online' ||
                          window.location.port === '5173' ||
                          window.location.port === '3000';
                          
@@ -1171,7 +1173,8 @@
   
   // Fallback: Always set up basic detection for production domain
   if (window.location.hostname === 'aipopup-production.up.railway.app' || 
-      window.location.hostname === 'mpencil.online') {
+      window.location.hostname === 'mpencil.online' ||
+      window.location.hostname === 'www.mpencil.online') {
     console.log('🚀 Production domain detected - setting up fallback detection');
     
     // Set DOM attributes immediately
