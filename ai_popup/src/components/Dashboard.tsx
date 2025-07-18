@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { authService } from '../services/authService';
 
 interface User {
@@ -23,9 +23,6 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
   const [uploadLoading, setUploadLoading] = useState({ resume: false, personalInfo: false });
   const [actionStatus, setActionStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [documentsStatus, setDocumentsStatus] = useState<DocumentStatus | null>(null);
-  const [fullName, setFullName] = useState<string>('');
-  const [llmTesting, setLlmTesting] = useState<boolean>(false);
-  const [llmResponse, setLlmResponse] = useState<{answer: string; data_source: string; reasoning: string} | null>(null);
   const [extensionInstalled, setExtensionInstalled] = useState<boolean>(false);
   const [extensionLoggedIn, setExtensionLoggedIn] = useState<boolean>(false);
   const [extensionLoginLoading, setExtensionLoginLoading] = useState<boolean>(false);
@@ -210,7 +207,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     try {
       const blob = type === 'resume' 
         ? await authService.downloadResume()
-        : await authService.downloadPersonalInfo(user?.id || '');
+        : await authService.downloadPersonalInfo();
       
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -237,7 +234,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
       if (type === 'resume') {
         await authService.deleteResume();
       } else {
-        await authService.deletePersonalInfo(user?.id || '');
+        await authService.deletePersonalInfo();
       }
       
       setActionStatus({
@@ -438,52 +435,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
     }
   };
 
-  const testLLMFunction = async () => {
-    if (!fullName.trim()) {
-      setActionStatus({
-        type: 'error',
-        message: 'Please enter a full name to test'
-      });
-      return;
-    }
 
-    setLlmTesting(true);
-    setLlmResponse(null);
-    setActionStatus(null);
-
-    try {
-      // Test the LLM function with the generate-field-answer API
-      const response = await authService.generateFieldAnswer({
-        field_type: 'text',
-        field_name: 'fullName',
-        field_id: 'test-full-name',
-        field_class: 'form-input',
-        field_label: 'Full Name',
-        field_placeholder: 'Enter your full name',
-        surrounding_text: `Testing LLM function with input: ${fullName}`
-      });
-
-      setLlmResponse({
-        answer: response,
-        data_source: 'LLM API Test',
-        reasoning: 'Generated from your uploaded documents and AI processing'
-      });
-
-      setActionStatus({
-        type: 'success',
-        message: 'LLM function tested successfully!'
-      });
-
-    } catch (error: any) {
-      console.error('LLM test failed:', error);
-      setActionStatus({
-        type: 'error',
-        message: error.message || 'LLM test failed. Make sure you have uploaded documents and are logged in.'
-      });
-    } finally {
-      setLlmTesting(false);
-    }
-  };
 
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
@@ -528,6 +480,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
         </button>
       </header>
 
+      {/* Main content (no tabs) */}
       <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
         {/* Status Message */}
         {actionStatus && (
@@ -1120,117 +1073,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
           </div>
         </section>
 
-        {/* LLM Function Test Section */}
-        <section style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '2rem',
-          marginTop: '2rem',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-        }}>
-          <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
-            🧠 Test LLM Function
-          </h2>
-          
-          <div style={{ maxWidth: '600px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              color: '#374151',
-              fontSize: '0.875rem',
-              fontWeight: '500'
-            }}>
-              Test Input (Full Name)
-            </label>
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Enter your full name to test LLM"
-                style={{
-                  flex: 1,
-                  padding: '0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#d1d5db';
-                  e.target.style.boxShadow = 'none';
-                }}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    testLLMFunction();
-                  }
-                }}
-              />
-              <button
-                onClick={testLLMFunction}
-                disabled={llmTesting || !fullName.trim()}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: (llmTesting || !fullName.trim()) ? '#9ca3af' : 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '1rem',
-                  fontWeight: '500',
-                  cursor: (llmTesting || !fullName.trim()) ? 'not-allowed' : 'pointer',
-                  minWidth: '120px'
-                }}
-              >
-                {llmTesting ? '🧠 Testing...' : '🚀 Test LLM'}
-              </button>
-            </div>
-            
-            <p style={{
-              margin: '0 0 1.5rem 0',
-              color: '#6b7280',
-              fontSize: '0.875rem'
-            }}>
-              This will test your LLM function using your uploaded documents and real authentication.
-            </p>
 
-            {/* LLM Response Display */}
-            {llmResponse && (
-              <div style={{
-                background: '#f0fdf4',
-                border: '1px solid #d1fae5',
-                borderRadius: '8px',
-                padding: '1rem',
-                marginTop: '1rem'
-              }}>
-                <h3 style={{ margin: '0 0 0.5rem 0', color: '#16a34a', fontSize: '1rem' }}>
-                  ✅ LLM Response:
-                </h3>
-                <div style={{
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  padding: '0.75rem',
-                  marginBottom: '0.5rem'
-                }}>
-                  <strong>Answer:</strong> {llmResponse.answer}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.875rem' }}>
-                  <div>
-                    <strong>Data Source:</strong> {llmResponse.data_source}
-                  </div>
-                  <div>
-                    <strong>Reasoning:</strong> {llmResponse.reasoning}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
       </main>
     </div>
   );

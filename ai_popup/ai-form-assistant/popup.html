@@ -251,6 +251,52 @@
       margin-bottom: 16px;
       border-left: 4px solid #16a34a;
     }
+
+    /* Toggle Switch Styles */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+      background-color: #667eea;
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
   </style>
 </head>
 <body>
@@ -367,11 +413,31 @@
       </div>
       </div>
       
-      <button id="testSessionBtn" class="btn btn-secondary" style="margin-bottom: 10px;">
-        🧪 Test Session
-      </button>
+      <!-- Translation Feature Section -->
+      <div class="status-section" style="margin-top: 20px; border-top: 1px solid #f3f4f6; padding-top: 20px;">
+        <div style="font-weight: 600; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+          🌐 Text Translation
+        </div>
+        
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 10px; background: #f8fafc; border-radius: 8px;">
+          <div>
+            <div style="font-size: 14px; font-weight: 500; color: #374151;">Auto-translate highlighted text</div>
+            <div style="font-size: 12px; color: #6b7280;">English → Russian</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="translationToggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        
+        <div id="translationInstructions" style="font-size: 11px; color: #6b7280; text-align: center; padding: 8px; background: #ecfdf5; border-radius: 6px; border-left: 3px solid #10b981;">
+          ✨ Highlight any English text on websites to see instant Russian translation
+        </div>
+      </div>
+
+
       
-      <button id="logoutBtn" class="btn btn-secondary">
+      <button id="logoutBtn" class="btn btn-secondary" style="margin-top: 20px;">
         Logout
       </button>
     </div>
@@ -385,6 +451,6 @@
     </div>
   </div>
 
-  <script src="popup.js"></script>
+  <script src="popup-unified.js"></script>
 </body>
 </html> 

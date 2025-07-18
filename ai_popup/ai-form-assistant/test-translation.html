@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌐 AI Translation Test Page</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .highlight-text {
+            background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%);
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .highlight-text:hover {
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+            margin-bottom: 20px;
+        }
+        
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background: #4caf50;
+            color: white;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="status">🔌 Extension Active</div>
+    
+    <div class="container">
+        <h1>🌐 AI Translation Test Page</h1>
+        
+        <div class="instructions">
+            <strong>📋 How to test the translation feature:</strong><br>
+            1. Make sure your AI Form Assistant extension is installed and active<br>
+            2. Ensure your backend server is running on localhost:8000<br>
+            3. Highlight any of the sample texts below<br>
+            4. Watch for the beautiful translation popup to appear!
+        </div>
+        
+        <div class="test-section">
+            <h3>🎯 Sample Texts for Translation Testing</h3>
+            
+            <p>Try highlighting this text: <span class="highlight-text">Hello, how are you doing today?</span></p>
+            
+            <p>Or this one: <span class="highlight-text">The weather is beautiful and sunny outside.</span></p>
+            
+            <p>Maybe this longer text: <span class="highlight-text">Artificial intelligence is revolutionizing the way we interact with technology and solve complex problems in various industries.</span></p>
+            
+            <p>Short phrase: <span class="highlight-text">Good morning!</span></p>
+            
+            <p>Technical text: <span class="highlight-text">Machine learning algorithms can process vast amounts of data to identify patterns and make predictions.</span></p>
+        </div>
+        
+        <div class="test-section">
+            <h3>📖 Regular Paragraph Text</h3>
+            <p>
+                You can also highlight any part of this regular paragraph text to test the translation feature. 
+                The AI translation system should work on any selected text, not just the highlighted examples above. 
+                Try selecting a few words, a sentence, or even multiple sentences to see how well the translation works. 
+                The popup should appear near your selection with the Russian translation.
+            </p>
+            
+            <p>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+                Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
+                Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            </p>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔧 Troubleshooting</h3>
+            <ul>
+                <li><strong>No popup appears:</strong> Check browser console (F12) for errors</li>
+                <li><strong>Translation fails:</strong> Ensure backend server is running on localhost:8000</li>
+                <li><strong>CORS errors:</strong> Make sure you've updated the main.py with the custom CORS middleware</li>
+                <li><strong>Extension not working:</strong> Reload the extension in chrome://extensions/</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎨 Expected Behavior</h3>
+            <p>When you highlight text, you should see:</p>
+            <ol>
+                <li>A loading popup appears immediately</li>
+                <li>The popup shows a spinner while translating</li>
+                <li>After 1-3 seconds, the translation appears</li>
+                <li>The popup auto-hides after 8 seconds</li>
+                <li>Click anywhere to manually close the popup</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        // Simple script to highlight the status when extension is detected
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if content script is loaded
+            setTimeout(() => {
+                const status = document.querySelector('.status');
+                if (typeof window.chrome !== 'undefined') {
+                    status.style.background = '#4caf50';
+                    status.textContent = '✅ Extension Ready';
+                } else {
+                    status.style.background = '#ff9800';
+                    status.textContent = '⚠️ Extension Not Detected';
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 
