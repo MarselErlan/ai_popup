@@ -22,6 +22,53 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
     });
   };
 
+  // Secure demo login function - uses environment variables from Railway
+  const handleDemoLogin = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      // Get demo credentials from Railway environment variables
+      const demoEmail = import.meta.env.VITE_DEMO_EMAIL || 'ethanabduraimov@gmail.com';
+      const demoPassword = import.meta.env.VITE_DEMO_PASSWORD;
+      
+      if (!demoPassword) {
+        setError('Demo credentials not configured. Please contact administrator.');
+        setLoading(false);
+        return;
+      }
+
+      const { userId, email, sessionId } = await authService.login({
+        email: demoEmail,
+        password: demoPassword
+      });
+      
+      // Store authentication data
+      localStorage.setItem('session_id', sessionId);
+      localStorage.setItem('user_id', userId);
+      localStorage.setItem('user_email', email);
+      
+      // Also store in browser extension storage if available
+      if (typeof window !== 'undefined' && (window as any).chrome?.storage) {
+        try {
+          await (window as any).chrome.storage.local.set({
+            session_id: sessionId,
+            user_id: userId,
+            user_email: email
+          });
+        } catch (e) {
+          console.log('Chrome storage not available:', e);
+        }
+      }
+      
+      onLogin({ userId, email });
+    } catch (err: any) {
+      setError(err.message || 'Demo login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -231,6 +278,27 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
 
           <button
             type="button"
+            onClick={handleDemoLogin}
+            disabled={loading}
+            style={{
+              width: '100%',
+              background: loading ? '#9ca3af' : '#4f46e5',
+              color: 'white',
+              padding: '0.875rem',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '1rem',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              marginBottom: '1rem'
+            }}
+          >
+            {loading ? 'Signing in...' : 'Demo Sign In'}
+          </button>
+
+          <button
+            type="button"
             onClick={onSwitchToSignup}
             style={{
               width: '100%',
@@ -258,8 +326,11 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
           color: '#6b7280'
         }}>
           <p style={{ margin: '0 0 0.5rem 0', fontWeight: '500' }}>Demo Account:</p>
-          <p style={{ margin: 0 }}>Email: demo@example.com</p>
-          <p style={{ margin: 0 }}>Password: demo123</p>
+          <p style={{ margin: 0 }}>Email: {import.meta.env.VITE_DEMO_EMAIL || 'ethanabduraimov@gmail.com'}</p>
+          <p style={{ margin: 0 }}>Password: [Securely stored in Railway variables]</p>
+          <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
+            Click "Demo Sign In" button above to sign in automatically
+          </p>
         </div>
       </div>
     </div>

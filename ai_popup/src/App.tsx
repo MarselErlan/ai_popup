@@ -39,12 +39,12 @@ const App: React.FC = () => {
 
   const handleLogin = (userData: { userId: string; email: string }) => {
     setUser({ id: userData.userId, email: userData.email });
-    setShowSignup(false); // Reset to login view
+    setShowSignup(false);
   };
 
   const handleSignup = (userData: { userId: string; email: string }) => {
     setUser({ id: userData.userId, email: userData.email });
-    setShowSignup(false); // Reset to login view
+    setShowSignup(false);
   };
 
   const handleLogout = async () => {
@@ -84,20 +84,40 @@ const App: React.FC = () => {
     );
   }
 
+  // Show login/signup page when user is not authenticated
+  if (!user) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f9fafb',
+        padding: '1rem'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '2rem',
+          maxWidth: '400px',
+          width: '100%',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+        }}>
+          {showSignup ? (
+            <Signup onSignup={handleSignup} onSwitchToLogin={switchToLogin} />
+          ) : (
+            <Login onLogin={handleLogin} onSwitchToSignup={switchToSignup} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show dashboard when user is authenticated
   return (
     <>
-      {user ? (
-        <>
-          <Dashboard user={user} onLogout={handleLogout} />
-          <PopupInjector />
-        </>
-      ) : (
-        showSignup ? (
-          <Signup onSignup={handleSignup} onSwitchToLogin={switchToLogin} />
-        ) : (
-          <Login onLogin={handleLogin} onSwitchToSignup={switchToSignup} />
-        )
-      )}
+      <Dashboard user={user} onLogout={handleLogout} />
+      <PopupInjector />
     </>
   );
 };
