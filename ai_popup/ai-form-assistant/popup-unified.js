@@ -9,7 +9,7 @@
 
 class UnifiedPopupManager {
   constructor() {
-    this.API_BASE_URL = 'http://localhost:8000';
+    this.API_BASE_URL = 'https://backendaipopup-production.up.railway.app';
     this.isFloatingMode = this.detectFloatingMode();
     this.initializeUI();
   }
@@ -45,35 +45,46 @@ class UnifiedPopupManager {
         
         // Update resume status
         const resumeStatus = document.getElementById('resumeStatus');
-        if (status.data && status.data.resume && status.data.resume.filename) {
-          resumeStatus.textContent = 'Ready';
-          resumeStatus.className = 'status-value status-ready';
-        } else {
-          resumeStatus.textContent = 'Missing';
-          resumeStatus.className = 'status-value status-missing';
+        if (resumeStatus) {
+          if (status.documents && status.documents.resume && status.documents.resume.filename) {
+            resumeStatus.textContent = 'Ready';
+            resumeStatus.className = 'status-value status-ready';
+          } else {
+            resumeStatus.textContent = 'Missing';
+            resumeStatus.className = 'status-value status-missing';
+          }
         }
         
         // Update personal info status
         const personalInfoStatus = document.getElementById('personalInfoStatus');
-        if (status.data && status.data.personal_info && status.data.personal_info.filename) {
-          personalInfoStatus.textContent = 'Ready';
-          personalInfoStatus.className = 'status-value status-ready';
-        } else {
-          personalInfoStatus.textContent = 'Missing';
-          personalInfoStatus.className = 'status-value status-missing';
+        if (personalInfoStatus) {
+          if (status.documents && status.documents.personal_info && status.documents.personal_info.filename) {
+            personalInfoStatus.textContent = 'Ready';
+            personalInfoStatus.className = 'status-value status-ready';
+          } else {
+            personalInfoStatus.textContent = 'Missing';
+            personalInfoStatus.className = 'status-value status-missing';
+          }
         }
       } else {
         const errorText = await response.text();
         console.error('❌ Document status API error:', response.status, errorText);
         
         // Set default status if API call fails
-        document.getElementById('resumeStatus').textContent = 'Unknown';
-        document.getElementById('personalInfoStatus').textContent = 'Unknown';
+        const resumeStatus = document.getElementById('resumeStatus');
+        const personalInfoStatus = document.getElementById('personalInfoStatus');
+        
+        if (resumeStatus) resumeStatus.textContent = 'Unknown';
+        if (personalInfoStatus) personalInfoStatus.textContent = 'Unknown';
       }
     } catch (error) {
       console.error('❌ Error checking document status:', error);
-      document.getElementById('resumeStatus').textContent = 'Error';
-      document.getElementById('personalInfoStatus').textContent = 'Error';
+      
+      const resumeStatus = document.getElementById('resumeStatus');
+      const personalInfoStatus = document.getElementById('personalInfoStatus');
+      
+      if (resumeStatus) resumeStatus.textContent = 'Error';
+      if (personalInfoStatus) personalInfoStatus.textContent = 'Error';
     }
   }
 
@@ -89,8 +100,19 @@ class UnifiedPopupManager {
     try {
       console.log('🔍 Checking for web app login...');
       
+      // Check if chrome.tabs is available (extension context)
+      if (!chrome.tabs || !chrome.tabs.query) {
+        console.log('⚠️ chrome.tabs not available - likely not in extension context');
+        return null;
+      }
+      
       // Query active tabs to check if web app is open and user is logged in
       const tabs = await chrome.tabs.query({});
+      
+      if (!tabs || tabs.length === 0) {
+        console.log('⚠️ No tabs found');
+        return null;
+      }
       
       for (const tab of tabs) {
         // Check if tab is localhost:5173 (web app)
@@ -404,20 +426,7 @@ class UnifiedPopupManager {
       });
     }
 
-    // URL Tracker buttons
-    const saveCurrentPageBtn = document.getElementById('saveCurrentPageBtn');
-    if (saveCurrentPageBtn) {
-      saveCurrentPageBtn.addEventListener('click', async () => {
-        await this.saveCurrentPage();
-      });
-    }
 
-    const openUrlTrackerBtn = document.getElementById('openUrlTrackerBtn');
-    if (openUrlTrackerBtn) {
-      openUrlTrackerBtn.addEventListener('click', () => {
-        this.openUrlTracker();
-      });
-    }
   }
 
   async handleLogin(email, password) {
@@ -596,7 +605,6 @@ class UnifiedPopupManager {
     // Load user info and document status
     this.loadUserInfo();
     this.checkDocumentStatus();
-    this.loadUrlStats();
   }
 
   setupDashboardEventListeners() {
@@ -610,24 +618,7 @@ class UnifiedPopupManager {
       });
     }
 
-    // URL Tracker buttons
-    const saveCurrentPageBtn = document.getElementById('saveCurrentPageBtn');
-    if (saveCurrentPageBtn) {
-      saveCurrentPageBtn.removeEventListener('click', this.saveCurrentPage);
-      saveCurrentPageBtn.addEventListener('click', async () => {
-        console.log('💾 Save current page button clicked');
-        await this.saveCurrentPage();
-      });
-    }
 
-    const openUrlTrackerBtn = document.getElementById('openUrlTrackerBtn');
-    if (openUrlTrackerBtn) {
-      openUrlTrackerBtn.removeEventListener('click', this.openUrlTracker);
-      openUrlTrackerBtn.addEventListener('click', () => {
-        console.log('🔗 Open URL tracker button clicked');
-        this.openUrlTracker();
-      });
-    }
 
     // Translation toggle
     const translationToggle = document.getElementById('translationToggle');
@@ -723,127 +714,8 @@ class UnifiedPopupManager {
     }
   }
 
-  // URL Tracker Methods
-  async saveCurrentPage() {
-    const saveBtn = document.getElementById('saveCurrentPageBtn');
-    if (!saveBtn) {
-      console.error('❌ Save button not found');
-      return;
-    }
-    
-    const originalText = saveBtn.textContent;
-    
-    try {
-      console.log('💾 Saving current page...');
-      saveBtn.innerHTML = '<div class="loading"></div> Saving...';
-      saveBtn.disabled = true;
 
-      // Get current active tab
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tabs || tabs.length === 0) {
-        throw new Error('No active tab found');
-      }
 
-      const currentTab = tabs[0];
-      const sessionId = await this.getStoredSessionId();
-      
-      if (!sessionId) {
-        throw new Error('Not authenticated. Please login first.');
-      }
-
-      // Save URL via API
-      const response = await fetch(`${this.API_BASE_URL}/api/urls/save`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': sessionId
-        },
-        body: JSON.stringify({
-          url: currentTab.url,
-          title: currentTab.title
-        })
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        this.showError(`✅ ${result.message || 'URL saved successfully!'}`, 'successMessage');
-        // Refresh URL stats
-        this.loadUrlStats();
-      } else {
-        throw new Error(result.detail || 'Failed to save URL');
-      }
-
-    } catch (error) {
-      console.error('Failed to save URL:', error);
-      this.showError(`❌ ${error.message}`);
-    } finally {
-      saveBtn.textContent = originalText;
-      saveBtn.disabled = false;
-    }
-  }
-
-  openUrlTracker() {
-    try {
-      console.log('🔗 Opening URL Tracker...');
-      
-      // Check if chrome.tabs is available
-      if (!chrome.tabs) {
-        console.error('❌ Chrome tabs API not available');
-        this.showError('Cannot open URL tracker. Extension permissions issue.');
-        return;
-      }
-      
-      // Open URL tracker web app in new tab
-      chrome.tabs.create({ url: 'http://localhost:5173' }, (tab) => {
-        if (chrome.runtime.lastError) {
-          console.error('❌ Failed to open URL tracker:', chrome.runtime.lastError);
-          this.showError('Failed to open URL tracker. Please check if the web app is running.');
-        } else {
-          console.log('✅ URL tracker opened successfully');
-        }
-      });
-    } catch (error) {
-      console.error('❌ Error opening URL tracker:', error);
-      this.showError('Failed to open URL tracker. Please try again.');
-    }
-  }
-
-  async loadUrlStats() {
-    try {
-      const sessionId = await this.getStoredSessionId();
-      if (!sessionId) return;
-
-      const response = await fetch(`${this.API_BASE_URL}/api/urls/stats/summary`, {
-        headers: {
-          'Authorization': sessionId,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('📊 URL stats data:', data);
-        
-        const urlStatsDiv = document.getElementById('urlStats');
-        if (urlStatsDiv && data.stats) {
-          const stats = data.stats;
-          urlStatsDiv.innerHTML = `
-            📊 <strong>${stats.total_urls}</strong> URLs tracked<br>
-            ✅ <strong>${stats.applied}</strong> applied • 
-            ⏳ <strong>${stats.in_progress}</strong> in progress • 
-            📝 <strong>${stats.not_applied}</strong> pending
-          `;
-        } else if (urlStatsDiv) {
-          urlStatsDiv.textContent = `📊 Tracked: 0 URLs`;
-        }
-      } else {
-        console.error('Failed to load URL stats:', response.status);
-      }
-    } catch (error) {
-      console.error('Error loading URL stats:', error);
-    }
-  }
 }
 
 /**
@@ -964,7 +836,7 @@ class FloatingPopupManager {
             🤖 AI Assistant
           </div>
           <div style="font-size: 14px; opacity: 0.9;">
-            Smart Form Filling & URL Tracking
+            Smart Form Filling
           </div>
         </div>
         <div id="floating-popup-content" style="background: white; border-radius: 16px; padding: 24px; color: #374151;">

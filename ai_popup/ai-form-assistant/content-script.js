@@ -6,7 +6,7 @@
 (function () {
   // Use extension icon URL
   const AI_ICON_URL = chrome.runtime.getURL('ai_popup.png');
-  const API_BASE_URL = 'http://localhost:8000';
+  const API_BASE_URL = 'https://backendaipopup-production.up.railway.app';
 
   // ============================================================================
   // 🌐 TRANSLATION FEATURE - Highlight text to translate English → Russian

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'https://backendaipopup-production.up.railway.app';
 
 // Create axios instance with default config (similar to authService)
 const api = axios.create({

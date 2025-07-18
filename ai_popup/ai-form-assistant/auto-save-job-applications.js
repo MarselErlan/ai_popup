@@ -3,7 +3,7 @@
 
 class JobApplicationAutoSave {
   constructor() {
-    this.apiBaseUrl = 'http://localhost:8000';
+    this.apiBaseUrl = 'https://backendaipopup-production.up.railway.app';
     this.sessionId = null;
     this.init();
   }

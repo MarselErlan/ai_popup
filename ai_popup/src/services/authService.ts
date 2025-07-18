@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'https://backendaipopup-production.up.railway.app';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -285,7 +285,7 @@ export const authService = {
   // Delete resume
   async deleteResume(): Promise<any> {
     try {
-      const response = await api.delete('/api/v1/resume/delete');
+      const response = await api.delete('/api/v1/resume');
       return response.data;
     } catch (error: any) {
       console.error('Resume delete error:', error.response?.data || error.message);
@@ -294,9 +294,9 @@ export const authService = {
   },
 
   // Delete personal info
-  async deletePersonalInfo(userId: string): Promise<any> {
+  async deletePersonalInfo(): Promise<any> {
     try {
-      const response = await api.delete(`/api/v1/personal-info/delete?user_id=${userId}`);
+      const response = await api.delete('/api/v1/personal-info');
       return response.data;
     } catch (error: any) {
       console.error('Personal info delete error:', error.response?.data || error.message);
@@ -318,9 +318,9 @@ export const authService = {
   },
 
   // Download personal info
-  async downloadPersonalInfo(userId: string): Promise<Blob> {
+  async downloadPersonalInfo(): Promise<Blob> {
     try {
-      const response = await api.get(`/api/v1/personal-info/download?user_id=${userId}`, {
+      const response = await api.get('/api/v1/personal-info/download', {
         responseType: 'blob'
       });
       return response.data;
@@ -357,8 +357,8 @@ export const authService = {
     try {
       const response = await api.get('/api/v1/documents/status');
       
-      // The actual document status is nested inside response.data.data
-      const documentStatus = response.data.data || response.data;
+      // The backend returns documents directly in response.data.documents
+      const documentStatus = response.data.documents || response.data;
       
       // Transform the API response to match our expected format
       const transformedStatus: DocumentStatus = {
@@ -410,24 +410,7 @@ export const authService = {
     }
   },
 
-  // Generate field answer
-  async generateFieldAnswer(fieldData: {
-    field_type: string;
-    field_name: string;
-    field_id: string;
-    field_class: string;
-    field_label: string;
-    field_placeholder: string;
-    surrounding_text: string;
-  }): Promise<string> {
-    try {
-      const response = await api.post('/api/generate-field-answer', fieldData);
-      return response.data.answer;
-    } catch (error: any) {
-      console.error('Field answer generation error:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.detail || error.message || 'Failed to generate field answer');
-    }
-  },
+
 
   // Logout - now properly cleans up sessions
   async logout(): Promise<void> {
