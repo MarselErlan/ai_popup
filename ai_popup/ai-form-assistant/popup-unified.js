@@ -116,7 +116,7 @@ class UnifiedPopupManager {
       
       for (const tab of tabs) {
         // Check if tab is localhost:5173 (web app)
-        if (tab.url && (tab.url.includes('localhost:5173') || tab.url.includes('127.0.0.1:5173'))) {
+        if (tab.url && tab.url.includes('aipopup-production.up.railway.app')) {
           console.log('🔍 Found web app tab:', tab.url);
           
           try {
