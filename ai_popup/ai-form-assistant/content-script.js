@@ -1,12 +1,409 @@
 /**
  * 🎯 AI Form Assistant - Content Script
- * Enhanced version with improved authentication and field detection
+ * Enhanced version with improved authentication, field detection, and text translation
  */
 
 (function () {
   // Use extension icon URL
   const AI_ICON_URL = chrome.runtime.getURL('ai_popup.png');
-  const API_BASE_URL = 'http://localhost:8000';
+  const API_BASE_URL = 'https://backendaipopup-production.up.railway.app';
+
+  // ============================================================================
+  // 🌐 TRANSLATION FEATURE - Highlight text to translate English → Russian
+  // ============================================================================
+  
+  let translationPopup = null;
+  let isTranslationEnabled = true; // Can be toggled via popup
+
+  // Listen for text selection - improved stability
+  document.addEventListener('mouseup', async function(event) {
+    if (!isTranslationEnabled) return;
+    
+    // Don't hide popup if clicking on the popup itself
+    if (event.target.closest('#ai-translation-popup')) {
+      return;
+    }
+    
+    // Small delay to ensure selection is complete
+    setTimeout(async () => {
+      const selectedText = window.getSelection().toString().trim();
+      
+      if (selectedText.length > 0) {
+        console.log('🔤 Text selected for translation:', selectedText);
+        
+        // Get selection position for popup placement
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          
+          // Only proceed if we have a valid selection rectangle
+          if (rect.width > 0 && rect.height > 0) {
+            await translateAndShowPopup(selectedText, rect);
+          }
+        }
+      }
+      // REMOVED: else clause that was hiding popup when no text selected
+    }, 100); // 100ms delay for stability
+  });
+
+  // Translation function
+  async function translateAndShowPopup(text, rect) {
+    try {
+      console.log('🌐 Translating text:', text);
+      
+      // Show loading popup first
+      showLoadingPopup(text, rect);
+      
+      const response = await fetch(`${API_BASE_URL}/api/translate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: text,
+          source_language: 'en',
+          target_language: 'ru'
+        })
+      });
+      
+      const result = await response.json();
+      console.log('✅ Translation result:', result);
+      
+      if (result.status === 'success') {
+        showTranslationPopup(result, rect);
+      } else {
+        showErrorPopup(text, 'Translation service error', rect);
+      }
+      
+    } catch (error) {
+      console.error('❌ Translation failed:', error);
+      showErrorPopup(text, 'Network error - make sure backend is running', rect);
+    }
+  }
+
+  // Show loading popup - simplified
+  function showLoadingPopup(text, rect) {
+    // Remove any existing popup
+    const existingPopup = document.getElementById('ai-translation-popup-stable');
+    if (existingPopup) {
+      existingPopup.remove();
+    }
+    
+    translationPopup = document.createElement('div');
+    translationPopup.id = 'ai-translation-popup-stable';
+    translationPopup.style.cssText = getPopupBaseStyles(rect);
+    
+    translationPopup.innerHTML = `
+      <div id="ai-drag-header" style="
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        padding: 12px 16px; 
+        background: rgba(255,255,255,0.1); 
+        border-radius: 10px 10px 0 0; 
+        cursor: move;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+        user-select: none;
+      ">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-weight: 600; opacity: 0.9; font-size: 13px;">🌐 Translating...</span>
+          <div style="display: flex; gap: 4px;">
+            <div style="width: 4px; height: 4px; background: rgba(255,255,255,0.6); border-radius: 50%;"></div>
+            <div style="width: 4px; height: 4px; background: rgba(255,255,255,0.6); border-radius: 50%;"></div>
+            <div style="width: 4px; height: 4px; background: rgba(255,255,255,0.6); border-radius: 50%;"></div>
+          </div>
+        </div>
+        <button id="ai-close-btn" style="
+          background: rgba(255,255,255,0.2); 
+          border: none; 
+          color: white; 
+          cursor: pointer; 
+          font-size: 16px; 
+          opacity: 0.8; 
+          padding: 4px 8px; 
+          margin: 0; 
+          border-radius: 4px;
+          transition: all 0.2s;
+        ">×</button>
+      </div>
+              <div style="
+          padding: 24px; 
+          text-align: center; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center;
+          flex: 1;
+          min-height: 60px;
+        ">
+          <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid #fff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        </div>
+    `;
+    
+    // Add loading animation
+    if (!document.getElementById('ai-spinner-style')) {
+      const style = document.createElement('style');
+      style.id = 'ai-spinner-style';
+      style.textContent = `
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(translationPopup);
+    
+    // Add close button functionality for loading popup
+    const loadingCloseBtn = translationPopup.querySelector('#ai-close-btn');
+    if (loadingCloseBtn) {
+      loadingCloseBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        translationPopup.remove();
+        translationPopup = null;
+        console.log('🗑️ Loading popup closed via X button');
+      });
+    }
+    
+    // Make loading popup draggable too
+    makeDraggable(translationPopup);
+  }
+
+  // Show translation popup - draggable and resizable (SUPER STABLE VERSION)
+  function showTranslationPopup(translation, rect) {
+    // Remove any existing popup first
+    const existingPopup = document.getElementById('ai-translation-popup-stable');
+    if (existingPopup) {
+      existingPopup.remove();
+    }
+    
+    // Create a completely independent popup with dynamic sizing
+    const popup = document.createElement('div');
+    popup.id = 'ai-translation-popup-stable';
+    popup.style.cssText = getPopupBaseStyles(rect);
+    
+    // Create draggable header and resizable content
+    popup.innerHTML = `
+      
+        <button id="ai-close-btn" style="
+          background: rgba(255,255,255,0.2); 
+          border: none; 
+          color: white; 
+          cursor: pointer; 
+          font-size: 16px; 
+          opacity: 0.8; 
+          padding: 4px 8px; 
+          margin: 0; 
+          border-radius: 4px;
+          transition: all 0.2s;
+        ">×</button>
+              <div id="ai-content" style="
+          padding: 20px 24px; 
+          font-size: 14px; 
+          font-weight: 500; 
+          line-height: 1.5; 
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+          hyphens: auto;
+          text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex: 1;
+          min-height: 0;
+          box-sizing: border-box;
+
+        ">
+        ${translation.translated_text}
+      </div>
+    `;
+    
+    document.body.appendChild(popup);
+    
+    // Add close button event listener
+    const closeBtn = popup.querySelector('#ai-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        popup.remove();
+        console.log('🗑️ Translation popup closed via X button');
+      });
+      
+      // Add hover effect for close button
+      closeBtn.addEventListener('mouseenter', function() {
+        this.style.background = 'rgba(255,255,255,0.3)';
+        this.style.opacity = '1';
+      });
+      
+      closeBtn.addEventListener('mouseleave', function() {
+        this.style.background = 'rgba(255,255,255,0.2)';
+        this.style.opacity = '0.8';
+      });
+    }
+    
+    // Make popup draggable
+    makeDraggable(popup);
+    
+    // Update the global reference
+    translationPopup = popup;
+    
+    console.log('✅ Draggable translation popup created - drag to move, resize corner to adjust size');
+  }
+
+  // Show error popup - simplified
+  function showErrorPopup(text, error, rect) {
+    hideTranslationPopup();
+    
+    translationPopup = document.createElement('div');
+    translationPopup.id = 'ai-translation-popup';
+    translationPopup.style.cssText = getPopupBaseStyles(rect, '#e74c3c'); // Red background for error
+    
+    translationPopup.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <span style="font-weight: 600; opacity: 0.8; font-size: 12px;">❌ Translation Error</span>
+        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px; opacity: 0.8; padding: 0; margin: 0; line-height: 1;">×</button>
+      </div>
+      <div style="padding: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 13px; line-height: 1.4;">
+        ${error}
+      </div>
+    `;
+    
+    document.body.appendChild(translationPopup);
+    
+    // No auto-hide - only close with X button or click outside
+  }
+
+  // Professional dynamic popup styles - auto-adjusts to content
+  function getPopupBaseStyles(rect, bgColor = '#667eea') {
+    const gradient = bgColor === '#667eea' 
+      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      : `linear-gradient(135deg, ${bgColor} 0%, #c0392b 100%)`;
+      
+    return `
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: ${gradient};
+      color: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      z-index: 999999;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      width: fit-content;
+      height: fit-content;
+      min-width: 200px;
+      max-width: 600px;
+      min-height: 80px;
+      max-height: none;
+      border: 2px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(15px);
+      cursor: move;
+      user-select: none;
+      resize: both;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    `;
+  }
+
+  // Hide translation popup - simplified, no animation
+  function hideTranslationPopup() {
+    if (translationPopup) {
+      translationPopup.remove();
+      translationPopup = null;
+    }
+  }
+
+  // Make entire popup draggable - SIMPLIFIED VERSION
+  function makeDraggable(popup) {
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+    
+    // Make entire popup draggable (except buttons)
+    popup.addEventListener('mousedown', dragStart);
+    document.addEventListener('mousemove', dragMove);
+    document.addEventListener('mouseup', dragEnd);
+    
+    function dragStart(e) {
+      // Don't drag when clicking buttons or content area
+      if (e.target.tagName === 'BUTTON' || e.target.id === 'ai-content') return;
+      
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      // Get current position of popup
+      const rect = popup.getBoundingClientRect();
+      startLeft = rect.left;
+      startTop = rect.top;
+      
+      popup.style.cursor = 'grabbing';
+      
+      e.preventDefault(); // Prevent text selection
+    }
+    
+    function dragMove(e) {
+      if (isDragging) {
+        e.preventDefault();
+        
+        // Calculate how much mouse has moved
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        
+        // Calculate new position
+        let newLeft = startLeft + deltaX;
+        let newTop = startTop + deltaY;
+        
+        // Keep popup within screen bounds
+        const maxX = window.innerWidth - popup.offsetWidth;
+        const maxY = window.innerHeight - popup.offsetHeight;
+        
+        newLeft = Math.max(0, Math.min(newLeft, maxX));
+        newTop = Math.max(0, Math.min(newTop, maxY));
+        
+        // Apply new position
+        popup.style.left = newLeft + 'px';
+        popup.style.top = newTop + 'px';
+      }
+    }
+    
+    function dragEnd() {
+      if (isDragging) {
+        isDragging = false;
+        popup.style.cursor = 'move';
+      }
+    }
+  }
+
+  // Removed click-outside functionality - only X button closes popup
+
+  // Listen for messages from popup to toggle translation
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'toggleTranslation') {
+      isTranslationEnabled = request.enabled;
+      console.log('🌐 Translation feature:', isTranslationEnabled ? 'enabled' : 'disabled');
+      sendResponse({ success: true });
+    }
+  });
+
+  // Initialize translation state from storage
+  chrome.storage.local.get(['translationEnabled'], (result) => {
+    isTranslationEnabled = result.translationEnabled !== false; // Default to true
+    console.log('🌐 Translation feature initialized:', isTranslationEnabled ? 'enabled' : 'disabled');
+  });
+
+  console.log('🌐 AI Translation feature loaded and ready!');
+
+  // ============================================================================
+  // 🎯 ORIGINAL FORM FILLING FEATURE
+  // ============================================================================
 
   const aiButton = document.createElement('img');
   aiButton.src = AI_ICON_URL;
@@ -79,14 +476,14 @@
     currentInput.disabled = true;
 
     try {
-      // Get authentication data from extension storage
-      const authData = await getAuthenticationData();
+      // Get authentication data with web app sync
+      const authData = await syncWithWebApp();
       
       if (!authData.sessionId || !authData.userId) {
-        currentInput.value = "🔐 Please login through the extension popup first";
+        currentInput.value = "🔐 Please login through the extension popup or web app first";
         currentInput.disabled = false;
         aiButton.style.display = 'none';
-        console.log("❌ Authentication required - user must login through extension");
+        console.log("❌ Authentication required - user must login through extension or web app");
         return;
       }
 
@@ -123,7 +520,7 @@
           if (refreshed) {
             console.log("✅ Session refreshed successfully, retrying request...");
             // Retry the request with fresh session
-            const newAuthData = await getAuthenticationData();
+            const newAuthData = await syncWithWebApp();
             if (newAuthData.sessionId) {
                              // Retry the API call
                const retryResponse = await fetch(`${API_BASE_URL}/api/generate-field-answer`, {
@@ -138,7 +535,7 @@
               if (retryResponse.ok) {
                 const retryData = await retryResponse.json();
                 if (retryData.answer) {
-                  currentInput.value = retryData.answer;
+                  currentInput.value = (originalValue ? originalValue + ' ' : '') + retryData.answer;
                   console.log("✅ AI Response (after refresh):", {
                     question: fieldData.label,
                     answer: retryData.answer,
@@ -163,7 +560,7 @@
       const data = await response.json();
       
       if (data.answer) {
-        currentInput.value = data.answer;
+        currentInput.value = (originalValue ? originalValue + ' ' : '') + data.answer;
         console.log("✅ AI Response:", {
           question: fieldData.label,
           answer: data.answer,
@@ -199,13 +596,89 @@
             userId: result.userId ? '✅ Found' : '❌ Missing',
             email: result.email ? '✅ Found' : '❌ Missing'
           });
-          resolve(result);
+          
+          resolve({
+            sessionId: result.sessionId,
+            userId: result.userId,
+            email: result.email
+          });
         });
       } catch (error) {
-        console.warn("⚠️ Extension context error:", error);
+        console.error("🚨 Error getting auth data:", error);
         resolve({});
       }
     });
+  }
+
+  // NEW: Sync session with web app
+  async function syncWithWebApp() {
+    console.log("🔄 Attempting to sync session with web app...");
+    
+    try {
+      // Check if we're on the web app domain
+      if (window.location.origin === 'http://localhost:5173') {
+        console.log("📍 On web app domain, checking for session...");
+        
+        // Try to get session from web app's localStorage
+        const webAppSession = localStorage.getItem('sessionId');
+        const webAppUserId = localStorage.getItem('userId');
+        const webAppEmail = localStorage.getItem('email');
+        
+        if (webAppSession && webAppUserId) {
+          console.log("✅ Found web app session, syncing to extension...");
+          
+          // Store in extension storage
+          chrome.storage.local.set({
+            sessionId: webAppSession,
+            userId: webAppUserId,
+            email: webAppEmail
+          }, () => {
+            console.log("✅ Session synced to extension storage");
+          });
+          
+          return {
+            sessionId: webAppSession,
+            userId: webAppUserId,
+            email: webAppEmail
+          };
+        }
+      }
+      
+      // If not on web app or no web app session, use extension session
+      return await getAuthenticationData();
+      
+    } catch (error) {
+      console.error("❌ Error syncing with web app:", error);
+      return await getAuthenticationData();
+    }
+  }
+
+  // NEW: Listen for web app login events
+  function setupWebAppSync() {
+    // Listen for storage events (when web app updates localStorage)
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'sessionId' && event.newValue) {
+        console.log("🔄 Web app session detected, syncing...");
+        syncWithWebApp();
+      }
+    });
+    
+    // Listen for custom events from web app
+    window.addEventListener('webAppLogin', (event) => {
+      console.log("🔄 Web app login event received:", event.detail);
+      if (event.detail && event.detail.sessionId) {
+        chrome.storage.local.set({
+          sessionId: event.detail.sessionId,
+          userId: event.detail.userId,
+          email: event.detail.email
+        }, () => {
+          console.log("✅ Session synced from web app event");
+        });
+      }
+    });
+    
+    // Initial sync check
+    syncWithWebApp();
   }
 
   // Refresh session from web app
@@ -686,6 +1159,9 @@
   setInterval(() => {
     updateGlobalAuthStatus();
   }, 10000);
+
+  // NEW: Listen for web app login events
+  setupWebAppSync();
 
   console.log("🎯 AI Form Assistant content script loaded and ready");
 })();

@@ -15,6 +15,15 @@
     "*://*/*"
   ],
   
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:*/*",
+      "https://localhost:*/*",
+      "*://localhost:*/*",
+      "https://backendaipopup-production.up.railway.app/*"
+    ]
+  },
+  
   "background": {
     "service_worker": "background.js"
   },
@@ -22,7 +31,7 @@
   "content_scripts": [
     {
       "matches": ["*://*/*"],
-      "js": ["content-script.js"],
+      "js": ["content-script.js", "popup-unified.js", "auto-save-job-applications.js"],
       "run_at": "document_end"
     }
   ],
@@ -34,7 +43,7 @@
   
   "web_accessible_resources": [
     {
-      "resources": ["ai_popup.png"],
+      "resources": ["ai_popup.png", "popup.html", "popup-unified.js"],
       "matches": ["*://*/*"]
     }
   ],

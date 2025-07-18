@@ -1,165 +1,180 @@
-# 🚀 AI Form Assistant - Browser Extension
+# 🤖 AI Form Assistant Extension v2.0
 
-An intelligent browser extension that uses AI to automatically fill form fields based on your uploaded documents and personal information.
+## 🚀 What's New in v2.0
 
-## ✨ Features
+### ✅ Fixed Issues
 
-- **🧠 AI-Powered Form Filling**: Automatically fills form fields using AI analysis
-- **🔐 Secure Authentication**: Session-based authentication with the backend
-- **📄 Document Integration**: Uses your uploaded resume and personal info
-- **🎯 Smart Field Detection**: Advanced label detection for better accuracy
-- **💫 Beautiful UI**: Modern popup interface with status indicators
-- **🔄 Real-time Sync**: Syncs with your web app login session
+- **Fixed Logout Button**: Now properly clears session and returns to login
+- **Fixed Save Current Page**: Correctly saves URLs to the backend API
+- **Fixed URL Stats**: Displays proper statistics with counts
+- **Removed Test Button**: Cleaned up UI by removing unnecessary test session button
+- **Improved Error Handling**: Better error messages and debugging
+- **Enhanced Event Listeners**: Buttons now work reliably in all views
 
-## 🛠️ Installation
+### ✅ Clean Architecture
 
-### Method 1: Load Unpacked (Development)
+- Unified popup system (works as both extension popup and floating popup)
+- Streamlined file structure (removed redundant files)
+- Proper API endpoint integration
+- Enhanced session management
 
-1. Open Chrome/Edge and go to `chrome://extensions/`
-2. Enable "Developer mode" (toggle in top right)
-3. Click "Load unpacked"
-4. Select the `ai-form-assistant` folder
-5. The extension icon should appear in your browser toolbar
+## 📦 Installation
 
-### Method 2: From Web App
+### Method 1: Load Unpacked Extension (Recommended)
 
-1. Login to the AI Form Assistant web app
-2. Go to the Dashboard
-3. In the "Extension Setup" section, click "Download Extension"
-4. Follow the installation instructions provided
+1. **Download** the `ai-form-assistant-extension-v2.zip` file
+2. **Extract** the zip file to a folder
+3. **Open Chrome** and go to `chrome://extensions/`
+4. **Enable Developer Mode** (toggle in top-right corner)
+5. **Click "Load unpacked"** and select the extracted folder
+6. **Pin the extension** to your toolbar for easy access
+
+### Method 2: Test the Extension
+
+1. **Open** the `test-extension.html` file in your browser
+2. **Run the tests** to verify the backend API is working
+3. **Test the extension** functionality
+
+## 🔧 Backend Setup
+
+### Prerequisites
+
+Make sure your backend is running:
+
+```bash
+cd backend_ai_popup
+python -m uvicorn main:app --reload
+```
+
+The extension expects the backend to be running on `http://localhost:8000`
+
+### Test Backend API
+
+Run the backend tests to ensure everything is working:
+
+```bash
+cd backend_ai_popup
+python test_extension_api.py
+```
 
 ## 🎯 How to Use
 
-### 1. **Initial Setup**
+### 1. First Time Setup
 
-- Install the browser extension
-- Login to the AI Form Assistant web app
-- Upload your resume and personal information documents
-- In the web app dashboard, click "Login to Extension" to sync your session
+1. **Click the extension icon** in your Chrome toolbar
+2. **Register** with your email and password
+3. **Upload your resume** and personal info via the web app (http://localhost:5173)
 
-### 2. **Using the Extension**
+### 2. Daily Usage
 
-- Navigate to any website with forms
-- Click on input fields (text inputs, textareas)
-- The AI icon will appear to the left of the field
-- Click the AI icon to auto-fill the field with relevant information
+1. **Visit any job application website**
+2. **Click on form fields** - they will auto-fill with your information
+3. **Use the extension popup** to:
+   - Save current page URLs for tracking
+   - View URL statistics
+   - Open the URL tracker web app
+   - Logout when needed
 
-### 3. **Extension Popup**
+### 3. URL Tracking
 
-- Click the extension icon in your browser toolbar
-- View your login status and document status
-- Login/logout directly from the extension
-- See real-time status of your uploaded documents
+- **Save Current Page**: Click to save job application URLs
+- **URL Stats**: See how many URLs you've tracked and applied to
+- **Open URL Tracker**: Access the full web app for detailed management
 
-## 🔧 Files Structure
+## 🔍 Features
 
-```
-ai-form-assistant/
-├── manifest.json          # Extension configuration
-├── popup.html            # Extension popup interface
-├── popup.js              # Popup functionality and authentication
-├── content-script.js     # Main form filling logic
-├── background.js         # Background service worker
-├── ai_popup.png          # Extension icon
-└── README.md            # This file
-```
+### ✅ **Smart Form Filling**
 
-## 🌟 Key Components
+- Automatically detects form fields
+- Fills with AI-generated answers based on your resume
+- Works on any website with form fields
 
-### Content Script (`content-script.js`)
+### ✅ **URL Tracking**
 
-- Detects form fields and displays AI button
-- Handles field analysis and label detection
-- Makes API calls to generate field answers
-- Manages authentication state
+- Save job application URLs with one click
+- Track application status (not applied, applied, in progress)
+- View statistics in the popup
 
-### Popup (`popup.html` + `popup.js`)
+### ✅ **Session Management**
 
-- Extension login/logout interface
-- Document status display
-- Session management
-- User information display
+- Secure login with session tokens
+- Automatic session sync between extension and web app
+- Persistent login across browser restarts
 
-### Background Script (`background.js`)
+### ✅ **Clean Interface**
 
-- Handles extension lifecycle events
-- Manages cross-tab communication
+- Beautiful, modern popup design
+- Easy-to-use buttons and controls
+- Clear status indicators
 
-## 🔐 Authentication Flow
+## 🛠️ Technical Details
 
-1. **Web App Login**: User logs into the main web application
-2. **Extension Sync**: User clicks "Login to Extension" in web app dashboard
-3. **Session Transfer**: Session data is copied to extension storage
-4. **Form Filling**: Extension uses session for authenticated API calls
+### Extension Files
 
-## 🎨 UI Features
+- `manifest.json` - Extension configuration
+- `popup.html` - Extension popup interface
+- `popup-unified.js` - Popup logic and API integration
+- `background.js` - Background script for session management
+- `content-script.js` - Content script for form filling
+- `web-app-sync.js` - Web app synchronization
+- `auto-save-job-applications.js` - Auto-save functionality
 
-- **Smart Positioning**: AI button appears next to focused input fields
-- **Hover Effects**: Smooth animations and visual feedback
-- **Loading States**: Clear indication when AI is processing
-- **Error Handling**: Helpful error messages for authentication issues
-- **Status Indicators**: Real-time extension and login status
+### API Endpoints Used
 
-## 🔍 Field Detection
-
-The extension uses multiple strategies to identify form fields:
-
-1. **Label Association**: `<label for="fieldId">` elements
-2. **Parent Labels**: Fields wrapped in `<label>` elements
-3. **Adjacent Labels**: Labels near the input field
-4. **ARIA Labels**: `aria-label` attributes
-5. **Placeholders**: Fallback to placeholder text
-6. **Name Attributes**: Formatted name attributes
-
-## 🚀 API Integration
-
-The extension communicates with the backend API:
-
-- **Endpoint**: `http://localhost:8000/api/generate-field-answer`
-- **Authentication**: Session-based with `Authorization: Session <sessionId>` header
-- **Request Data**: Field metadata and context information
-- **Response**: AI-generated field value with reasoning
+- `POST /api/simple/register` - User registration
+- `POST /api/simple/login` - User login
+- `POST /api/session/check-and-update/{user_id}` - Session management
+- `POST /api/urls/save` - Save current page URL
+- `GET /api/urls/stats/summary` - Get URL statistics
+- `POST /api/generate-field-answer` - AI form filling
 
 ## 🐛 Troubleshooting
 
-### Extension Not Working
+### Extension Not Working?
 
-- Check if you're logged into the web app
-- Verify extension is installed and enabled
-- Check browser console for error messages
-- Try refreshing the page
+1. **Check backend**: Make sure `http://localhost:8000/health` returns OK
+2. **Reload extension**: Go to `chrome://extensions/` and click reload
+3. **Check console**: Open DevTools and look for error messages
+4. **Test API**: Run `test_extension_api.py` to verify backend
 
-### Authentication Issues
+### Buttons Not Responding?
 
-- Re-login through the extension popup
-- Or use "Login to Extension" button in web app dashboard
-- Clear extension storage if needed
+1. **Refresh the extension**: Reload it in Chrome extensions page
+2. **Check popup**: Make sure you're logged in to the extension
+3. **Verify session**: Logout and login again
 
-### Field Detection Problems
+### Form Filling Not Working?
 
-- Check if the form has proper labels
-- Look for console logs showing field analysis
-- Try different field detection strategies
+1. **Upload documents**: Make sure you've uploaded resume and personal info
+2. **Check permissions**: Extension needs access to the website
+3. **Try manual trigger**: Click directly on form fields
 
-## 🔧 Development
+## 📞 Support
 
-### Local Development
+If you encounter any issues:
 
-1. Make changes to extension files
-2. Go to `chrome://extensions/`
-3. Click refresh icon on the extension card
-4. Test on various websites
+1. **Run the test suite**: Open `test-extension.html` in your browser
+2. **Check backend logs**: Look at your FastAPI server console
+3. **Verify API**: Run `python test_extension_api.py`
+4. **Check extension console**: Open DevTools on the extension popup
 
-### Console Debugging
+## 🎉 Version History
 
-- Open Developer Tools (F12)
-- Check Console tab for extension logs
-- Look for messages starting with 🚀, 🔐, 🧠, etc.
+### v2.0 (Current)
 
-## 📝 License
+- Fixed all button functionality (logout, save page, URL stats)
+- Removed test session button
+- Improved error handling and debugging
+- Clean file structure
+- Enhanced API integration
 
-This extension is part of the AI Form Assistant project.
+### v1.0
+
+- Initial release with basic form filling
+- Session management
+- URL tracking
+- Web app sync
 
 ---
 
-**Need Help?** Check the main web app dashboard for status and troubleshooting tips!
+**Enjoy using your AI Form Assistant! 🚀**

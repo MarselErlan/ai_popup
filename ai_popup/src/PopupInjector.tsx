@@ -41,7 +41,7 @@ const PopupInjector: React.FC = () => {
         // Add click handler
         button.addEventListener('click', async () => {
           try {
-            const response = await fetch('http://localhost:8000/api/generate-field-answer', {
+            const response = await fetch('https://backendaipopup-production.up.railway.app/api/generate-field-answer', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

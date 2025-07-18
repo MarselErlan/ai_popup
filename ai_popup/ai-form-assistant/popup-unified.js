@@ -1,12 +1,22 @@
 /**
- * 🎯 AI Form Assistant - Popup Script
- * Handles authentication and user management
+ * 🎯 Unified AI Form Assistant Popup
+ * Combines extension popup and floating popup functionality
+ * 
+ * Works both as:
+ * - Browser extension popup (when clicked from extension icon)
+ * - Floating popup (when injected into web pages)
  */
 
-class PopupManager {
+class UnifiedPopupManager {
   constructor() {
-    this.API_BASE_URL = 'http://localhost:8000';
+    this.API_BASE_URL = 'https://backendaipopup-production.up.railway.app';
+    this.isFloatingMode = this.detectFloatingMode();
     this.initializeUI();
+  }
+
+  detectFloatingMode() {
+    // Check if we're running as a floating popup vs extension popup
+    return window.location.href.includes('http') && !chrome?.extension;
   }
 
   async checkDocumentStatus() {
@@ -35,35 +45,46 @@ class PopupManager {
         
         // Update resume status
         const resumeStatus = document.getElementById('resumeStatus');
-        if (status.data && status.data.resume && status.data.resume.filename) {
-          resumeStatus.textContent = 'Ready';
-          resumeStatus.className = 'status-value status-ready';
-        } else {
-          resumeStatus.textContent = 'Missing';
-          resumeStatus.className = 'status-value status-missing';
+        if (resumeStatus) {
+          if (status.documents && status.documents.resume && status.documents.resume.filename) {
+            resumeStatus.textContent = 'Ready';
+            resumeStatus.className = 'status-value status-ready';
+          } else {
+            resumeStatus.textContent = 'Missing';
+            resumeStatus.className = 'status-value status-missing';
+          }
         }
         
         // Update personal info status
         const personalInfoStatus = document.getElementById('personalInfoStatus');
-        if (status.data && status.data.personal_info && status.data.personal_info.filename) {
-          personalInfoStatus.textContent = 'Ready';
-          personalInfoStatus.className = 'status-value status-ready';
-        } else {
-          personalInfoStatus.textContent = 'Missing';
-          personalInfoStatus.className = 'status-value status-missing';
+        if (personalInfoStatus) {
+          if (status.documents && status.documents.personal_info && status.documents.personal_info.filename) {
+            personalInfoStatus.textContent = 'Ready';
+            personalInfoStatus.className = 'status-value status-ready';
+          } else {
+            personalInfoStatus.textContent = 'Missing';
+            personalInfoStatus.className = 'status-value status-missing';
+          }
         }
       } else {
         const errorText = await response.text();
         console.error('❌ Document status API error:', response.status, errorText);
         
         // Set default status if API call fails
-        document.getElementById('resumeStatus').textContent = 'Unknown';
-        document.getElementById('personalInfoStatus').textContent = 'Unknown';
+        const resumeStatus = document.getElementById('resumeStatus');
+        const personalInfoStatus = document.getElementById('personalInfoStatus');
+        
+        if (resumeStatus) resumeStatus.textContent = 'Unknown';
+        if (personalInfoStatus) personalInfoStatus.textContent = 'Unknown';
       }
     } catch (error) {
       console.error('❌ Error checking document status:', error);
-      document.getElementById('resumeStatus').textContent = 'Error';
-      document.getElementById('personalInfoStatus').textContent = 'Error';
+      
+      const resumeStatus = document.getElementById('resumeStatus');
+      const personalInfoStatus = document.getElementById('personalInfoStatus');
+      
+      if (resumeStatus) resumeStatus.textContent = 'Error';
+      if (personalInfoStatus) personalInfoStatus.textContent = 'Error';
     }
   }
 
@@ -79,8 +100,19 @@ class PopupManager {
     try {
       console.log('🔍 Checking for web app login...');
       
+      // Check if chrome.tabs is available (extension context)
+      if (!chrome.tabs || !chrome.tabs.query) {
+        console.log('⚠️ chrome.tabs not available - likely not in extension context');
+        return null;
+      }
+      
       // Query active tabs to check if web app is open and user is logged in
       const tabs = await chrome.tabs.query({});
+      
+      if (!tabs || tabs.length === 0) {
+        console.log('⚠️ No tabs found');
+        return null;
+      }
       
       for (const tab of tabs) {
         // Check if tab is localhost:5173 (web app)
@@ -286,45 +318,7 @@ class PopupManager {
     }
   }
 
-  async testSession() {
-    try {
-      console.log('🧪 Testing current session...');
-      
-      // Get stored session data
-      const result = await chrome.storage.local.get(['sessionId', 'userId', 'email']);
-      console.log('🔍 Stored session data:', result);
-      
-      if (!result.sessionId) {
-        console.error('❌ No session ID found in storage');
-        this.showError('No session found. Please login again.');
-        return;
-      }
-      
-      // Test session validation
-      const response = await fetch(`${this.API_BASE_URL}/api/session/current/${result.sessionId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('🧪 Session validation response:', response.status);
-      
-      if (response.ok) {
-        const sessionData = await response.json();
-        console.log('✅ Session is valid:', sessionData);
-        this.showError('✅ Session is valid and working!', 'successMessage');
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Session validation failed:', response.status, errorText);
-        this.showError(`Session validation failed: ${response.status}`);
-      }
-      
-    } catch (error) {
-      console.error('❌ Session test error:', error);
-      this.showError(`Session test failed: ${error.message}`);
-    }
-  }
+
 
   async clearStoredData() {
     return new Promise((resolve) => {
@@ -378,13 +372,7 @@ class PopupManager {
       });
     }
 
-    // Test session button
-    const testSessionBtn = document.getElementById('testSessionBtn');
-    if (testSessionBtn) {
-      testSessionBtn.addEventListener('click', async () => {
-        await this.testSession();
-      });
-    }
+
 
     // Logout button
     const logoutBtn = document.getElementById('logoutBtn');
@@ -437,6 +425,8 @@ class PopupManager {
         this.showLogin();
       });
     }
+
+
   }
 
   async handleLogin(email, password) {
@@ -536,10 +526,14 @@ class PopupManager {
 
   async handleLogout() {
     try {
+      console.log('🚪 Starting logout process...');
       await this.logout();
+      console.log('✅ Logout successful, showing login screen');
       this.showLogin();
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('❌ Logout failed:', error);
+      // Show login anyway to reset the UI
+      this.showLogin();
     }
   }
 
@@ -605,9 +599,91 @@ class PopupManager {
     if (dashboardView) dashboardView.classList.remove('hidden');
     if (signupView) signupView.classList.add('hidden');
 
+    // Setup dashboard-specific event listeners
+    this.setupDashboardEventListeners();
+
     // Load user info and document status
     this.loadUserInfo();
     this.checkDocumentStatus();
+  }
+
+  setupDashboardEventListeners() {
+    // Logout button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.removeEventListener('click', this.handleLogout); // Remove any existing listener
+      logoutBtn.addEventListener('click', async () => {
+        console.log('🚪 Logout button clicked');
+        await this.handleLogout();
+      });
+    }
+
+
+
+    // Translation toggle
+    const translationToggle = document.getElementById('translationToggle');
+    if (translationToggle) {
+      // Load saved state
+      this.loadTranslationState();
+      
+      translationToggle.addEventListener('change', async () => {
+        const isEnabled = translationToggle.checked;
+        console.log('🌐 Translation toggle changed:', isEnabled ? 'enabled' : 'disabled');
+        
+        // Save state to storage
+        try {
+          await chrome.storage.local.set({ 'translationEnabled': isEnabled });
+        } catch (error) {
+          console.error('Failed to save translation state:', error);
+        }
+        
+        // Send message to content script
+        try {
+          const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (tabs[0]) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              action: 'toggleTranslation',
+              enabled: isEnabled
+            });
+          }
+        } catch (error) {
+          console.error('Failed to send message to content script:', error);
+        }
+        
+        // Update instructions
+        this.updateTranslationInstructions(isEnabled);
+      });
+    }
+  }
+
+  async loadTranslationState() {
+    try {
+      const result = await chrome.storage.local.get(['translationEnabled']);
+      const isEnabled = result.translationEnabled !== false; // Default to true
+      
+      const translationToggle = document.getElementById('translationToggle');
+      if (translationToggle) {
+        translationToggle.checked = isEnabled;
+        this.updateTranslationInstructions(isEnabled);
+      }
+    } catch (error) {
+      console.error('Failed to load translation state:', error);
+    }
+  }
+
+  updateTranslationInstructions(isEnabled) {
+    const instructionsDiv = document.getElementById('translationInstructions');
+    if (instructionsDiv) {
+      if (isEnabled) {
+        instructionsDiv.innerHTML = '✨ Highlight any English text on websites to see instant Russian translation';
+        instructionsDiv.style.background = '#ecfdf5';
+        instructionsDiv.style.borderLeft = '3px solid #10b981';
+      } else {
+        instructionsDiv.innerHTML = '⏸️ Translation feature is disabled - toggle above to enable';
+        instructionsDiv.style.background = '#fef3c7';
+        instructionsDiv.style.borderLeft = '3px solid #f59e0b';
+      }
+    }
   }
 
   async loadUserInfo() {
@@ -637,11 +713,204 @@ class PopupManager {
       }, 5000);
     }
   }
+
+
+
 }
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  new PopupManager();
-});
+/**
+ * 🌐 Floating Popup Manager
+ * Creates and manages floating popup on web pages
+ */
+class FloatingPopupManager {
+  constructor() {
+    this.isVisible = false;
+    this.popupContainer = null;
+    this.createFloatingButton();
+  }
 
-console.log('🎯 AI Form Assistant popup script loaded');
+  createFloatingButton() {
+    // Remove existing button
+    if (document.getElementById('ai-floating-trigger')) {
+      document.getElementById('ai-floating-trigger').remove();
+    }
+
+    // Create floating trigger button
+    const button = document.createElement('div');
+    button.id = 'ai-floating-trigger';
+    button.innerHTML = '🤖';
+    
+    // Add styles
+    button.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 999999;
+      font-size: 20px;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      transition: all 0.3s ease;
+      user-select: none;
+    `;
+
+    // Add hover effect
+    button.addEventListener('mouseenter', () => {
+      button.style.transform = 'scale(1.1)';
+      button.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
+    });
+
+    button.addEventListener('mouseleave', () => {
+      button.style.transform = 'scale(1)';
+      button.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+    });
+
+    // Add click event
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.togglePopup();
+    });
+
+    document.body.appendChild(button);
+  }
+
+  togglePopup() {
+    if (this.isVisible) {
+      this.hidePopup();
+    } else {
+      this.showPopup();
+    }
+  }
+
+  async showPopup() {
+    if (this.popupContainer) {
+      this.popupContainer.remove();
+    }
+
+    // Create popup container with embedded HTML
+    this.popupContainer = document.createElement('div');
+    this.popupContainer.id = 'ai-floating-popup';
+    this.popupContainer.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      width: 380px;
+      min-height: 500px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      z-index: 999998;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+      animation: slideIn 0.3s ease-out;
+    `;
+
+    // Add animation styles
+    if (!document.getElementById('ai-popup-styles')) {
+      const style = document.createElement('style');
+      style.id = 'ai-popup-styles';
+      style.textContent = `
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateY(-20px) scale(0.9); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes slideOut {
+          from { opacity: 1; transform: translateY(0) scale(1); }
+          to { opacity: 0; transform: translateY(-20px) scale(0.9); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Create popup content (simplified version)
+    this.popupContainer.innerHTML = `
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">
+            🤖 AI Assistant
+          </div>
+          <div style="font-size: 14px; opacity: 0.9;">
+            Smart Form Filling
+          </div>
+        </div>
+        <div id="floating-popup-content" style="background: white; border-radius: 16px; padding: 24px; color: #374151;">
+          <div style="text-align: center; padding: 20px;">
+            <div style="font-size: 16px; margin-bottom: 10px;">🔄 Loading...</div>
+            <div style="font-size: 12px; color: #6b7280;">Initializing AI Assistant</div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(this.popupContainer);
+    this.isVisible = true;
+
+    // Initialize popup functionality
+    setTimeout(() => {
+      new UnifiedPopupManager();
+    }, 100);
+
+    // Close on outside click
+    setTimeout(() => {
+      document.addEventListener('click', this.handleOutsideClick.bind(this), { once: true });
+    }, 100);
+  }
+
+  hidePopup() {
+    if (this.popupContainer) {
+      this.popupContainer.style.animation = 'slideOut 0.3s ease-out';
+      setTimeout(() => {
+        if (this.popupContainer) {
+          this.popupContainer.remove();
+          this.popupContainer = null;
+        }
+      }, 300);
+    }
+    this.isVisible = false;
+  }
+
+  handleOutsideClick(e) {
+    if (this.popupContainer && 
+        !this.popupContainer.contains(e.target) && 
+        !document.getElementById('ai-floating-trigger').contains(e.target)) {
+      this.hidePopup();
+    }
+  }
+}
+
+// Initialize based on context
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializePopup);
+} else {
+  initializePopup();
+}
+
+function initializePopup() {
+  // Check if we're in a browser extension context or web page context
+  if (typeof chrome !== 'undefined' && chrome.extension) {
+    // Extension popup context
+    console.log('🎯 Initializing Extension Popup');
+    new UnifiedPopupManager();
+  } else if (window.location.href.includes('popup.html')) {
+    // Direct popup HTML access
+    console.log('🎯 Initializing Direct Popup');
+    new UnifiedPopupManager();
+  } else {
+    // Web page context - create floating popup
+    console.log('🌐 Initializing Floating Popup');
+    new FloatingPopupManager();
+  }
+}
+
+// Export for external usage
+window.UnifiedPopupManager = UnifiedPopupManager;
+window.FloatingPopupManager = FloatingPopupManager;
+
+console.log('🎯 Unified AI Form Assistant popup script loaded');
