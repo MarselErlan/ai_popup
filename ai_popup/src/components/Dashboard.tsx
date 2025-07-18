@@ -12,7 +12,7 @@ interface DocumentStatus {
 }
 
 interface DashboardProps {
-  user: User | null;
+  user: User;
   onLogout: () => void;
 }
 
@@ -473,58 +473,54 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
       <header style={{
         background: 'white',
         borderBottom: '1px solid #e5e7eb',
-        padding: '0.75rem 1.5rem',
+        padding: '1rem 2rem',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <img 
             src="/ai_popup.png" 
             alt="AI Logo" 
-            style={{ width: '28px', height: '28px' }} 
+            style={{ width: '32px', height: '32px' }} 
           />
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.25rem', color: '#1f2937' }}>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#1f2937' }}>
               AI Form Assistant
             </h1>
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8rem' }}>
-              {user ? `Welcome back, ${user.email}` : 'Please sign in to get started'}
+            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+              Welcome back, {user.email}
             </p>
           </div>
         </div>
         
-        {user && (
-          <button
-            onClick={onLogout}
-            style={{
-              background: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.8rem'
-            }}
-          >
-            Logout
-          </button>
-        )}
+        <button
+          onClick={onLogout}
+          style={{
+            background: '#f3f4f6',
+            color: '#374151',
+            border: '1px solid #d1d5db',
+            padding: '0.5rem 1rem',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '0.875rem'
+          }}
+        >
+          Logout
+        </button>
       </header>
 
-      {/* Main content */}
-      {user ? (
-        <main style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Main content (no tabs) */}
+      <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
         {/* Status Message */}
         {actionStatus && (
           <div style={{
-            padding: '0.75rem',
-            borderRadius: '6px',
-            marginBottom: '1.5rem',
+            padding: '1rem',
+            borderRadius: '8px',
+            marginBottom: '2rem',
             background: actionStatus.type === 'success' ? '#ecfdf5' : '#fef2f2',
             border: `1px solid ${actionStatus.type === 'success' ? '#d1fae5' : '#fecaca'}`,
-            color: actionStatus.type === 'success' ? '#065f46' : '#dc2626',
-            fontSize: '0.875rem'
+            color: actionStatus.type === 'success' ? '#065f46' : '#dc2626'
           }}>
             {actionStatus.message}
           </div>
@@ -533,54 +529,52 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
         {/* Document Status Overview */}
         <section style={{
           background: 'white',
-          borderRadius: '8px',
-          padding: '1.5rem',
-          marginBottom: '1.5rem',
-          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+          borderRadius: '12px',
+          padding: '2rem',
+          marginBottom: '2rem',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
         }}>
-          <h2 style={{ margin: '0 0 1rem 0', color: '#1f2937', fontSize: '1.25rem' }}>
+          <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
             📊 Document Status
           </h2>
           
           {statusLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading status...</p>
+            <p style={{ color: '#6b7280' }}>Loading status...</p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
               <div style={{ 
-                padding: '0.75rem', 
+                padding: '1rem', 
                 border: '1px solid #e5e7eb', 
-                borderRadius: '6px',
+                borderRadius: '8px',
                 background: documentsStatus?.resume_uploaded ? '#f0fdf4' : '#fef2f2'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                  <span style={{ fontSize: '1rem' }}>📄</span>
-                  <strong style={{ fontSize: '0.875rem' }}>Resume</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '1.25rem' }}>📄</span>
+                  <strong>Resume</strong>
                 </div>
                 <p style={{ 
                   margin: 0,
                   color: documentsStatus?.resume_uploaded ? '#16a34a' : '#dc2626',
-                  fontWeight: '500',
-                  fontSize: '0.8rem'
+                  fontWeight: '500'
                 }}>
                   {documentsStatus?.resume_uploaded ? '✅ Uploaded' : '❌ Not uploaded'}
                 </p>
               </div>
               
               <div style={{ 
-                padding: '0.75rem', 
+                padding: '1rem', 
                 border: '1px solid #e5e7eb', 
-                borderRadius: '6px',
+                borderRadius: '8px',
                 background: documentsStatus?.personal_info_uploaded ? '#f0fdf4' : '#fef2f2'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                  <span style={{ fontSize: '1rem' }}>👤</span>
-                  <strong style={{ fontSize: '0.875rem' }}>Personal Info</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '1.25rem' }}>👤</span>
+                  <strong>Personal Info</strong>
                 </div>
                 <p style={{ 
                   margin: 0,
                   color: documentsStatus?.personal_info_uploaded ? '#16a34a' : '#dc2626',
-                  fontWeight: '500',
-                  fontSize: '0.8rem'
+                  fontWeight: '500'
                 }}>
                   {documentsStatus?.personal_info_uploaded ? '✅ Uploaded' : '❌ Not uploaded'}
                 </p>
@@ -589,238 +583,237 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
           )}
         </section>
 
-          {/* File Upload Section */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-            {/* Resume Upload */}
-            <section style={{
-              background: 'white',
-              borderRadius: '8px',
-              padding: '1.5rem',
-              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-            }}>
-              <h2 style={{ margin: '0 0 1rem 0', color: '#1f2937', fontSize: '1.25rem' }}>
-                📄 Resume Management
-              </h2>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <input
-                  ref={resumeFileRef}
-                  type="file"
-                  accept=".pdf,.doc,.docx,.txt"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(file, 'resume');
-                  }}
-                  style={{ display: 'none' }}
-                />
-                
-                <button
-                  onClick={() => resumeFileRef.current?.click()}
-                  disabled={uploadLoading.resume}
-                  style={{
-                    width: '100%',
-                    background: uploadLoading.resume ? '#9ca3af' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                    color: 'white',
-                    padding: '0.75rem',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    cursor: uploadLoading.resume ? 'not-allowed' : 'pointer',
-                    marginBottom: '0.75rem'
-                  }}
-                >
-                  {uploadLoading.resume ? '⏳ Uploading...' : '📤 Upload Resume'}
-                </button>
-              </div>
-
-              {documentsStatus?.resume_uploaded && (
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                  <button
-                    onClick={() => handleDownload('resume')}
-                    style={{
-                      flex: 1,
-                      background: '#f3f4f6',
-                      color: '#374151',
-                      border: '1px solid #d1d5db',
-                      padding: '0.4rem',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem'
-                    }}
-                  >
-                    📥 Download
-                  </button>
-                  <button
-                    onClick={() => handleDelete('resume')}
-                    style={{
-                      flex: 1,
-                      background: '#fef2f2',
-                      color: '#dc2626',
-                      border: '1px solid #fecaca',
-                      padding: '0.4rem',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem'
-                    }}
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
-              )}
-              
-              <button
-                onClick={handleResumeReembed}
-                disabled={resumeLoading || !documentsStatus?.resume_uploaded}
-                style={{
-                  width: '100%',
-                  background: resumeLoading ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  color: 'white',
-                  padding: '0.75rem',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  cursor: (resumeLoading || !documentsStatus?.resume_uploaded) ? 'not-allowed' : 'pointer',
-                  opacity: !documentsStatus?.resume_uploaded ? 0.5 : 1
-                }}
-              >
-                {resumeLoading ? '⏳ Re-embedding...' : '🔄 Re-embed Resume'}
-              </button>
-            </section>
-
-            {/* Personal Info Upload */}
-            <section style={{
-              background: 'white',
-              borderRadius: '8px',
-              padding: '1.5rem',
-              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-            }}>
-              <h2 style={{ margin: '0 0 1rem 0', color: '#1f2937', fontSize: '1.25rem' }}>
-                👤 Personal Info Management
-              </h2>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <input
-                  ref={personalInfoFileRef}
-                  type="file"
-                  accept=".pdf,.doc,.docx,.txt"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFileUpload(file, 'personalInfo');
-                  }}
-                  style={{ display: 'none' }}
-                />
-                
-                <button
-                  onClick={() => personalInfoFileRef.current?.click()}
-                  disabled={uploadLoading.personalInfo}
-                  style={{
-                    width: '100%',
-                    background: uploadLoading.personalInfo ? '#9ca3af' : 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                    color: 'white',
-                    padding: '0.75rem',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    cursor: uploadLoading.personalInfo ? 'not-allowed' : 'pointer',
-                    marginBottom: '0.75rem'
-                  }}
-                >
-                  {uploadLoading.personalInfo ? '⏳ Uploading...' : '📤 Upload Personal Info'}
-                </button>
-              </div>
-
-              {documentsStatus?.personal_info_uploaded && (
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                  <button
-                    onClick={() => handleDownload('personalInfo')}
-                    style={{
-                      flex: 1,
-                      background: '#f3f4f6',
-                      color: '#374151',
-                      border: '1px solid #d1d5db',
-                      padding: '0.4rem',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem'
-                    }}
-                  >
-                    📥 Download
-                  </button>
-                  <button
-                    onClick={() => handleDelete('personalInfo')}
-                    style={{
-                      flex: 1,
-                      background: '#fef2f2',
-                      color: '#dc2626',
-                      border: '1px solid #fecaca',
-                      padding: '0.4rem',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem'
-                    }}
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
-              )}
-              
-              <button
-                onClick={handlePersonalInfoReembed}
-                disabled={personalInfoLoading || !documentsStatus?.personal_info_uploaded}
-                style={{
-                  width: '100%',
-                  background: personalInfoLoading ? '#9ca3af' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                  color: 'white',
-                  padding: '0.75rem',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  cursor: (personalInfoLoading || !documentsStatus?.personal_info_uploaded) ? 'not-allowed' : 'pointer',
-                  opacity: !documentsStatus?.personal_info_uploaded ? 0.5 : 1
-                }}
-              >
-                {personalInfoLoading ? '⏳ Re-embedding...' : '🔄 Re-embed Personal Info'}
-              </button>
-            </section>
-          </div>
-
-          {/* Extension Status & Login Section */}
+        {/* File Upload Section */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+          {/* Resume Upload */}
           <section style={{
             background: 'white',
-            borderRadius: '8px',
-            padding: '1.5rem',
-            marginBottom: '1.5rem',
-            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+            borderRadius: '12px',
+            padding: '2rem',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
           }}>
-            <h2 style={{ margin: '0 0 1rem 0', color: '#1f2937', fontSize: '1.25rem' }}>
-              🚀 Browser Extension Setup
+            <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
+              📄 Resume Management
             </h2>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-              {/* Extension Status */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <input
+                ref={resumeFileRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.txt"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file, 'resume');
+                }}
+                style={{ display: 'none' }}
+              />
+              
+              <button
+                onClick={() => resumeFileRef.current?.click()}
+                disabled={uploadLoading.resume}
+                style={{
+                  width: '100%',
+                  background: uploadLoading.resume ? '#9ca3af' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  color: 'white',
+                  padding: '1rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  cursor: uploadLoading.resume ? 'not-allowed' : 'pointer',
+                  marginBottom: '1rem'
+                }}
+              >
+                {uploadLoading.resume ? '⏳ Uploading...' : '📤 Upload Resume'}
+              </button>
+            </div>
+
+            {documentsStatus?.resume_uploaded && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <button
+                  onClick={() => handleDownload('resume')}
+                  style={{
+                    flex: 1,
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    padding: '0.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  📥 Download
+                </button>
+                <button
+                  onClick={() => handleDelete('resume')}
+                  style={{
+                    flex: 1,
+                    background: '#fef2f2',
+                    color: '#dc2626',
+                    border: '1px solid #fecaca',
+                    padding: '0.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  🗑️ Delete
+                </button>
+              </div>
+            )}
+            
+            <button
+              onClick={handleResumeReembed}
+              disabled={resumeLoading || !documentsStatus?.resume_uploaded}
+              style={{
+                width: '100%',
+                background: resumeLoading ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                padding: '1rem',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: '500',
+                cursor: (resumeLoading || !documentsStatus?.resume_uploaded) ? 'not-allowed' : 'pointer',
+                opacity: !documentsStatus?.resume_uploaded ? 0.5 : 1
+              }}
+            >
+              {resumeLoading ? '⏳ Re-embedding...' : '🔄 Re-embed Resume'}
+            </button>
+          </section>
+
+          {/* Personal Info Upload */}
+          <section style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
+              👤 Personal Info Management
+            </h2>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <input
+                ref={personalInfoFileRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.txt"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file, 'personalInfo');
+                }}
+                style={{ display: 'none' }}
+              />
+              
+              <button
+                onClick={() => personalInfoFileRef.current?.click()}
+                disabled={uploadLoading.personalInfo}
+                style={{
+                  width: '100%',
+                  background: uploadLoading.personalInfo ? '#9ca3af' : 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  color: 'white',
+                  padding: '1rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  cursor: uploadLoading.personalInfo ? 'not-allowed' : 'pointer',
+                  marginBottom: '1rem'
+                }}
+              >
+                {uploadLoading.personalInfo ? '⏳ Uploading...' : '📤 Upload Personal Info'}
+              </button>
+            </div>
+
+            {documentsStatus?.personal_info_uploaded && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <button
+                  onClick={() => handleDownload('personalInfo')}
+                  style={{
+                    flex: 1,
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    padding: '0.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  📥 Download
+                </button>
+                <button
+                  onClick={() => handleDelete('personalInfo')}
+                  style={{
+                    flex: 1,
+                    background: '#fef2f2',
+                    color: '#dc2626',
+                    border: '1px solid #fecaca',
+                    padding: '0.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  🗑️ Delete
+                </button>
+              </div>
+            )}
+            
+            <button
+              onClick={handlePersonalInfoReembed}
+              disabled={personalInfoLoading || !documentsStatus?.personal_info_uploaded}
+              style={{
+                width: '100%',
+                background: personalInfoLoading ? '#9ca3af' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                color: 'white',
+                padding: '1rem',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: '500',
+                cursor: (personalInfoLoading || !documentsStatus?.personal_info_uploaded) ? 'not-allowed' : 'pointer',
+                opacity: !documentsStatus?.personal_info_uploaded ? 0.5 : 1
+              }}
+            >
+              {personalInfoLoading ? '⏳ Re-embedding...' : '🔄 Re-embed Personal Info'}
+            </button>
+          </section>
+        </div>
+
+        {/* Extension Status & Login Section */}
+        <section style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '2rem',
+          marginBottom: '2rem',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+        }}>
+          <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
+            🚀 Browser Extension Setup
+          </h2>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+            {/* Extension Status */}
                          <div style={{ 
-               padding: '0.75rem', 
+               padding: '1rem', 
                border: '1px solid #e5e7eb', 
-               borderRadius: '6px',
+               borderRadius: '8px',
                background: extensionInstalled ? '#f0fdf4' : '#fef2f2'
              }}>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                 <span style={{ fontSize: '1rem' }}>🔧</span>
-                 <strong style={{ fontSize: '0.875rem' }}>Extension Status</strong>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                 <span style={{ fontSize: '1.25rem' }}>🔧</span>
+                 <strong>Extension Status</strong>
                </div>
                <p style={{ 
                  margin: 0,
                  color: extensionInstalled ? '#16a34a' : '#dc2626',
-                 fontWeight: '500',
-                 fontSize: '0.8rem'
+                 fontWeight: '500'
                }}>
                  {extensionInstalled ? '✅ Installed' : '❌ Not installed'}
                  {extensionDetectedOnce && extensionInstalled && (
-                   <span style={{ fontSize: '0.7rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                   <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
                      (Stable)
                    </span>
                  )}
@@ -829,20 +822,19 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
             
             {/* Login Status */}
             <div style={{ 
-              padding: '0.75rem', 
+              padding: '1rem', 
               border: '1px solid #e5e7eb', 
-              borderRadius: '6px',
+              borderRadius: '8px',
               background: extensionLoggedIn ? '#f0fdf4' : '#fef2f2'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                <span style={{ fontSize: '1rem' }}>🔐</span>
-                <strong style={{ fontSize: '0.875rem' }}>Extension Login</strong>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '1.25rem' }}>🔐</span>
+                <strong>Extension Login</strong>
               </div>
               <p style={{ 
                 margin: 0,
                 color: extensionLoggedIn ? '#16a34a' : '#dc2626',
-                fontWeight: '500',
-                fontSize: '0.8rem'
+                fontWeight: '500'
               }}>
                 {extensionLoggedIn ? '✅ Logged in' : '❌ Not logged in'}
               </p>
@@ -850,17 +842,17 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             {!extensionInstalled && (
               <button
                 onClick={downloadExtension}
                 style={{
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   color: 'white',
-                  padding: '0.75rem 1.5rem',
+                  padding: '1rem 2rem',
                   border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
                   fontWeight: '500',
                   cursor: 'pointer',
                   display: 'flex',
@@ -879,10 +871,10 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
                 style={{
                   background: extensionLoginLoading ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                   color: 'white',
-                  padding: '0.75rem 1.5rem',
+                  padding: '1rem 2rem',
                   border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
                   fontWeight: '500',
                   cursor: extensionLoginLoading ? 'not-allowed' : 'pointer',
                   display: 'flex',
@@ -899,8 +891,8 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
                 padding: '1rem 2rem',
                 background: '#f0fdf4',
                 color: '#16a34a',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
+                borderRadius: '8px',
+                fontSize: '1rem',
                 fontWeight: '500',
                 display: 'flex',
                 alignItems: 'center',
@@ -996,9 +988,9 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
                  background: '#f3f4f6',
                  color: '#374151',
                  border: '1px solid #d1d5db',
-                 padding: '0.75rem',
-                 borderRadius: '6px',
-                 fontSize: '0.8rem',
+                 padding: '1rem',
+                 borderRadius: '8px',
+                 fontSize: '0.875rem',
                  cursor: 'pointer'
                }}
              >
@@ -1006,7 +998,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
              </button>
           </div>
           
-                     <p style={{ color: '#6b7280', marginTop: '0.75rem', fontSize: '0.8rem' }}>
+                     <p style={{ color: '#6b7280', marginTop: '1rem', fontSize: '0.875rem' }}>
              The browser extension enables AI form filling on any website. Once installed and logged in, 
              you can click on form fields and use the AI button to automatically fill them.
            </p>
@@ -1014,11 +1006,11 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
            {/* Debug Info */}
            {!extensionInstalled && (
              <div style={{ 
-               marginTop: '0.75rem', 
-               padding: '0.5rem', 
+               marginTop: '1rem', 
+               padding: '0.75rem', 
                background: '#fef3c7', 
-               borderRadius: '4px',
-               fontSize: '0.75rem',
+               borderRadius: '6px',
+               fontSize: '0.875rem',
                color: '#92400e'
              }}>
                <strong>💡 Not detecting extension?</strong> After installing:
@@ -1031,9 +1023,9 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
            )}
            
            {/* Debug Section for Development */}
-           <details style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: '#6b7280' }}>
+           <details style={{ marginTop: '1rem', fontSize: '0.75rem', color: '#6b7280' }}>
              <summary style={{ cursor: 'pointer', fontWeight: '500' }}>🔍 Debug Info (Click to expand)</summary>
-             <div style={{ marginTop: '0.5rem', fontFamily: 'monospace', background: '#f8fafc', padding: '0.4rem', borderRadius: '4px' }}>
+             <div style={{ marginTop: '0.5rem', fontFamily: 'monospace', background: '#f8fafc', padding: '0.5rem', borderRadius: '4px' }}>
                <div>Extension Installed: {extensionInstalled ? '✅ Yes' : '❌ No'}</div>
                <div>Extension Detected Once: {extensionDetectedOnce ? '✅ Yes' : '❌ No'}</div>
                <div>Extension Logged In: {extensionLoggedIn ? '✅ Yes' : '❌ No'}</div>
@@ -1052,13 +1044,13 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
            
            {/* Installation Instructions */}
            <div style={{ 
-             marginTop: '0.75rem', 
-             padding: '0.75rem', 
+             marginTop: '1rem', 
+             padding: '1rem', 
              background: '#f8fafc', 
-             borderRadius: '6px',
-             fontSize: '0.8rem'
+             borderRadius: '8px',
+             fontSize: '0.875rem'
            }}>
-             <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151', fontSize: '0.8rem' }}>
+             <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151', fontSize: '0.875rem' }}>
                📋 Installation Steps:
              </h4>
              <ol style={{ margin: 0, paddingLeft: '1.25rem', color: '#6b7280' }}>
@@ -1076,15 +1068,15 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
         {/* Usage Instructions */}
         <section style={{
           background: 'white',
-          borderRadius: '8px',
-          padding: '1.5rem',
-          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+          borderRadius: '12px',
+          padding: '2rem',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
         }}>
-          <h2 style={{ margin: '0 0 1rem 0', color: '#1f2937', fontSize: '1.25rem' }}>
+          <h2 style={{ margin: '0 0 1.5rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
             💡 How It Works
           </h2>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📤</div>
               <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Upload Documents</h3>
@@ -1113,25 +1105,6 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
 
 
       </main>
-      ) : (
-        <main style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '8px',
-            padding: '2rem',
-            textAlign: 'center',
-            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-          }}>
-            <h2 style={{ margin: '0 0 0.75rem 0', color: '#1f2937', fontSize: '1.5rem' }}>
-              🤖 AI Form Assistant
-            </h2>
-            <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '1rem' }}>
-              Please sign in to access your dashboard and manage your documents.
-            </p>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔐</div>
-          </div>
-        </main>
-      )}
     </div>
   );
 };

@@ -276,14 +276,13 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
 
-          {/* Demo Login Button */}
           <button
             type="button"
             onClick={handleDemoLogin}
             disabled={loading}
             style={{
               width: '100%',
-              background: loading ? '#9ca3af' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              background: loading ? '#9ca3af' : '#4f46e5',
               color: 'white',
               padding: '0.875rem',
               border: 'none',
@@ -295,7 +294,7 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
               marginBottom: '1rem'
             }}
           >
-            {loading ? 'Signing in...' : '🚀 Demo Login'}
+            {loading ? 'Signing in...' : 'Demo Sign In'}
           </button>
 
           <button
@@ -330,7 +329,7 @@ const Login = ({ onLogin, onSwitchToSignup }: LoginProps) => {
           <p style={{ margin: 0 }}>Email: {import.meta.env.VITE_DEMO_EMAIL || 'ethanabduraimov@gmail.com'}</p>
           <p style={{ margin: 0 }}>Password: [Securely stored in Railway variables]</p>
           <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-            Click "Demo Login" button above to sign in automatically
+            Click "Demo Sign In" button above to sign in automatically
           </p>
         </div>
       </div>
