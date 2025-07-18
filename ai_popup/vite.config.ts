@@ -13,6 +13,8 @@ export default defineConfig({
     host: '0.0.0.0',
     allowedHosts: [
       'aipopup-production.up.railway.app',
+      'mpencil.online',
+      'www.mpencil.online',
       'localhost',
       '127.0.0.1'
     ]
