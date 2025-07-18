@@ -39,12 +39,12 @@ const App: React.FC = () => {
 
   const handleLogin = (userData: { userId: string; email: string }) => {
     setUser({ id: userData.userId, email: userData.email });
-    setShowSignup(false); // Reset to login view
+    setShowSignup(false);
   };
 
   const handleSignup = (userData: { userId: string; email: string }) => {
     setUser({ id: userData.userId, email: userData.email });
-    setShowSignup(false); // Reset to login view
+    setShowSignup(false);
   };
 
   const handleLogout = async () => {
@@ -86,17 +86,40 @@ const App: React.FC = () => {
 
   return (
     <>
-      {user ? (
-        <>
-          <Dashboard user={user} onLogout={handleLogout} />
-          <PopupInjector />
-        </>
-      ) : (
-        showSignup ? (
-          <Signup onSignup={handleSignup} onSwitchToLogin={switchToLogin} />
-        ) : (
-          <Login onLogin={handleLogin} onSwitchToSignup={switchToSignup} />
-        )
+      {/* Always render Dashboard in background */}
+      <Dashboard user={user} onLogout={handleLogout} />
+      <PopupInjector />
+
+      {/* Auth Forms as Overlays when user is not authenticated */}
+      {!user && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          backdropFilter: 'blur(2px)'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)'
+          }}>
+            {showSignup ? (
+              <Signup onSignup={handleSignup} onSwitchToLogin={switchToLogin} />
+            ) : (
+              <Login onLogin={handleLogin} onSwitchToSignup={switchToSignup} />
+            )}
+          </div>
+        </div>
       )}
     </>
   );
